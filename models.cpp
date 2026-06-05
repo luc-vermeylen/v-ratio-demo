@@ -5,123 +5,148 @@ using namespace Rcpp;
 
 static Ziggurat::Ziggurat::Ziggurat zigg;
 
+// ============================================================================
+// MODEL 1: TWO-STAGE DDM (BINARY CONFIDENCE)
+// ============================================================================
 // [[Rcpp::export]]
-DataFrame DMC(
-    double v_c = .5,            // response-relevant drift
-    double a = 50,              // Bounds are [ -a , +a ], hence boundary separation is 2a
-    double ter_mean = 300,      // mean non-decision time
-    double amp = 20,            // amplitude of gamma pulse (strength of irrelevant evidence)
-    double tau = 130,           // peak time of gamma pulse (scale)
-    double beta = 3,            // Starting point variability shape, beta = 0 means no variability
-    double ter_sd = 20,         // non-decision time variability (normal distribution)
-    double alpha = 2,           // shape of gamma pulse
-    double s = 4,               // within-trial noise
-    double dt = 1,              // time step size
-    double tmax = 10000,        // maximum time per trial (trials at max are NA, i.e. "undecided")
-    int ntrials = 5000,         // number of trials to simulate
-    unsigned long seed = 0) {       
+DataFrame FCB_cj2(
+    int ntrials, 
+    double a, double v, double a_slope, double ter, 
+    double a2, double vratio, double a2_slope_upper, double a2_slope_lower, 
+    double ter2, double starting_point_confidence,
+    double s = 1, double dt = 0.001, double tmax = 10.0, unsigned long seed = 0) {
   
-  // Set seeds (important for parallel workers)
-  RNGScope scope; // synchronizes RNG with R
+  // Parallel RNG Setup
+  RNGScope scope; 
   if (seed != 0) zigg.setSeed(seed);
   
-  // Output container
-  NumericMatrix DATA(ntrials, 3);
-   
-  // 1. SETUP GAMMA LOOKUP TABLE (for speedup)
-  // ---------------------------------------------------------
-  // Pre-calculate the gamma pulse.
-  // Formula: exp(-t/tau) * (t*e / ((a-1)*tau))^(a-1) * ((a-1)/t - 1/tau)
+  NumericMatrix DATA(ntrials, 4);
+  double z = 0.5;
   
-  int max_steps = (int)std::ceil(tmax / dt);
-  std::vector<double> gamma_lookup(max_steps);
-  
-  // Constants for Gamma
-  double ae = alpha - 1.0;
-  // Constant part: (e / ( (alpha-1)*tau )) ^ (alpha-1)
-  double const_term = std::pow(std::exp(1.0) / (ae * tau), ae);
-  
-  for(int i = 0; i < max_steps; ++i) {
-    double t_val = (i + 1) * dt; 
-    double shape = std::exp(-t_val / tau) * 
-      std::pow(t_val, ae) * const_term * 
-      (ae / t_val - 1.0 / tau);
-    gamma_lookup[i] = shape; 
-  } 
-  
-  double s_sqrt_dt = s * std::sqrt(dt);
-  double b_upper = a;
-  double b_lower = -a;
-  double width = b_upper - b_lower; // Total separation (2*a)
-   
-  // 2. TRIAL LOOP
-  // ---------------------------------------------------------
-  
-  // half congruent (1) and half incongruent (-1) trials
-  std::vector<double> congruency_vec;
-  int per_cond = ntrials / 2;
-  for (int i = 0; i < per_cond; i++) {
-    congruency_vec.push_back(1);
-    congruency_vec.push_back(-1);
-  }
-   
-  // Loop through trials
   for (int i = 0; i < ntrials; i++) {
-    
-    // A. Starting Point Variability (Beta Distribution)
-    // Map Beta(0-1) to Range (-a to +a)
-    double sp = 0.0;
-    if (beta > 0) { // If beta=0, sp=0 (Unbiased)
-      sp = R::rbeta(beta, beta) * width + b_lower; // Scale to [b_lower, b_upper]
-    }  
-    
-    // B. Non-Decision Time Variability (Normal Distribution)
-    double ter = R::rnorm(ter_mean, ter_sd);
-    if (ter < 0) ter = 0; // Safety check to avoid negative NDT
-    
-    // C. Accumulate Evidence
-    double evidence = sp;
-    double t = 0.0;
-    int step_idx = 0;
-    int accuracy = NA_REAL; // NA = undecided/max_time reached
-    double congruency = congruency_vec[i];
-    double current_amp = amp * congruency; // Signed amplitude
+    // 1. Decisional processing
+    double evidence = a * z;
+    double t = 0;
+    int cor = -1;
      
-    while (t < tmax) {
+    while (evidence <= a && evidence >= 0) {
       t += dt;
+      evidence += v * dt + s * std::sqrt(dt) * zigg.norm();
       
-      // Lookup Drift
-      double v_automatic = 0.0;
-      if (step_idx < max_steps) {
-        v_automatic = current_amp * gamma_lookup[step_idx];
+      if (evidence >= a - t * a_slope) {
+        cor = 1; break;
+      } else if (evidence <= 0 + t * a_slope) { 
+        cor = 0; break;
       } 
-      step_idx++;
-      
-      // Total Drift = Controlled (v_c) + Automatic (Pulse)
-      double v_total = v_c + v_automatic;
-      
-      evidence += v_total * dt + s_sqrt_dt * zigg.norm();
-      
-      // Check Bounds
-      if (evidence >= b_upper) {
-        accuracy = 1; // Correct
-        break;
-      } 
-      if (evidence <= b_lower) {
-        accuracy = 0; // Error
-        break;
-      }
-    } 
+      if (t >= tmax) break;
+    }
+     
+    DATA(i, 0) = t + ter; // rt
+    DATA(i, 1) = cor;     // acc
+     
+    // 2. Post-decisional processing (Confidence)
+    double t2 = 0;
+    double v_post = v * vratio;
+    evidence = a2 * starting_point_confidence;
     
-    // Save Results
-    DATA(i, 0) = t + ter;
-    DATA(i, 1) = accuracy;
-    DATA(i, 2) = congruency;
+    if (cor == 0) { v_post = -1 * v_post; } // reverse drift for errors
+     
+    while ((evidence < a2 - t2 * a2_slope_upper) && (evidence > t2 * a2_slope_lower)) {
+      t2 += dt;
+      evidence += v_post * dt + s * std::sqrt(dt) * zigg.norm();
+      if (t2 >= tmax) break;
+    }
+     
+    DATA(i, 2) = t2 + ter2; // rtconf
+     
+    if (evidence >= a2 / 2) {
+      DATA(i, 3) = 1; // High Confidence
+    } else { 
+      DATA(i, 3) = 0; // Low Confidence
+    }
   }
    
-  DataFrame df = DataFrame::create(Named("rt") = DATA(_, 0), 
-                                   Named("acc") = DATA(_, 1),
-                                   Named("congruency") = DATA(_, 2));
-  return df;
+  return DataFrame::create(
+    Named("rt") = DATA(_, 0),
+    Named("acc") = DATA(_, 1),
+    Named("rtconf") = DATA(_, 2),
+    Named("cj") = DATA(_, 3)
+  );
 } 
 
+// ============================================================================
+// MODEL 2: TWO-STAGE DDM (6-POINT SCALE CONFIDENCE)
+// ============================================================================
+// [[Rcpp::export]]
+DataFrame FCB_cj6(
+    int ntrials, 
+    double a, double v, double a_slope, double ter, 
+    double a2, double vratio, double a2_slope_upper, double a2_slope_lower, 
+    double ter2, double starting_point_confidence,
+    double s = 1, double dt = 0.001, double tmax = 10.0, unsigned long seed = 0) {
+  
+  // Parallel RNG Setup
+  RNGScope scope; 
+  if (seed != 0) zigg.setSeed(seed);
+  
+  NumericMatrix DATA(ntrials, 4);
+  double z = 0.5;
+  
+  for (int i = 0; i < ntrials; i++) {
+    // 1. Decisional processing
+    double evidence = a * z;
+    double t = 0;
+    int cor = -1;
+     
+    while (evidence <= a && evidence >= 0) {
+      t += dt;
+      evidence += v * dt + s * std::sqrt(dt) * zigg.norm();
+      
+      if (evidence >= a - t * a_slope) {
+        cor = 1; break;
+      } else if (evidence <= 0 + t * a_slope) { 
+        cor = 0; break;
+      } 
+      if (t >= tmax) break;
+    }
+     
+    DATA(i, 0) = t + ter; // rt
+    DATA(i, 1) = cor;     // acc
+     
+    // 2. Post-decisional processing (Confidence)
+    double t2 = 0;
+    double v_post = v * vratio;
+    evidence = a2 * starting_point_confidence;
+    
+    if (cor == 0) { v_post = -1 * v_post; }
+     
+    while ((evidence < a2 - t2 * a2_slope_upper) && (evidence > t2 * a2_slope_lower)) {
+      t2 += dt;
+      evidence += v_post * dt + s * std::sqrt(dt) * zigg.norm();
+      if (t2 >= tmax) break;
+    }
+     
+    DATA(i, 2) = t2 + ter2; // rtconf
+     
+    if (evidence < a2 / 6) {
+      DATA(i, 3) = 1;
+    } else if (evidence < 2 * a2 / 6) { 
+      DATA(i, 3) = 2;
+    } else if (evidence < 3 * a2 / 6) { 
+      DATA(i, 3) = 3;
+    } else if (evidence < 4 * a2 / 6) { 
+      DATA(i, 3) = 4;
+    } else if (evidence < 5 * a2 / 6) { 
+      DATA(i, 3) = 5;
+    } else { 
+      DATA(i, 3) = 6;
+    }
+  } 
+  
+  return DataFrame::create(
+    Named("rt") = DATA(_, 0),
+    Named("acc") = DATA(_, 1),
+    Named("rtconf") = DATA(_, 2),
+    Named("cj") = DATA(_, 3)
+  );
+} 

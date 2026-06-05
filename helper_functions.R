@@ -12,42 +12,34 @@ library(tidyr)
 # Each entry contains a lower and upper bound c(min, max).
 # For parameters you wish to keep constant across all studies, set min == max.
 model_params <- list(
-  "DDM" = list(
-    v   = c(0, 3),    # Drift rate
-    a   = c(.5, 3),   # Boundary separation
-    ter = c(0, 1),    # Non-decision time
-    z   = c(.5, .5)   # Starting point bias (fixed at 0.5)
+  "FCB_cj2" = list(
+    a                         = c(0.3, 4),
+    v                         = c(0, 3),
+    a_slope                   = c(0, 0),     # fixed to 0 (no decisional boundary collapse)
+    ter                       = c(0, 1.5),
+    a2                        = c(0, 20),
+    vratio                    = c(0.2, 5),
+    a2_slope_upper            = c(0, 20),
+    a2_slope_lower            = c(0, 20),
+    ter2                      = c(-1.5, 1.5),
+    starting_point_confidence = c(0, 1)
   ),
-  "DMC" = list(
-    v_c      = c(0, 1.5),   # Controlled drift rate
-    a        = c(10, 150),  # Boundary separation 
-    ter_mean = c(100, 800), # Mean non-decision time
-    amp      = c(0, 130),   # Amplitude of the automatic pulse
-    tau      = c(10, 450),  # Time-to-peak of the automatic pulse
-    beta     = c(2, 10),    # Starting point variability (beta distribution shape)
-    ter_sd   = c(0, 200),   # Non-decision time variability (SD)
-    alpha    = c(2, 2)      # Gamma pulse shape (fixed at 2)
-  ),
-  "DDM_metaconflict_bounds" = list(
-    v_c            = c(0, 1),
-    amp            = c(0, 40),
-    tau            = c(10, 300), 
-    a              = c(20, 200),
-    ter            = c(100, 800),
-    z              = c(.5, .5),
-    alpha          = c(2, 2),
-    a2             = c(10, 80),
-    ter2           = c(-200, 400),
-    z2             = c(.1, .9), 
-    postdriftmod   = c(0, 2),
-    metanoise      = c(0.0001, 5),
-    a2_slope_upper = c(0.01, 5),
-    a2_slope_lower = c(0.01, 5)
+  "FCB_cj6" = list(
+    a                         = c(0.3, 4),
+    v                         = c(0, 3),
+    a_slope                   = c(0, 0),     # fixed to 0 (no decisional boundary collapse)
+    ter                       = c(0, 1.5),
+    a2                        = c(0, 20),
+    vratio                    = c(0.2, 5),
+    a2_slope_upper            = c(0, 20),
+    a2_slope_lower            = c(0, 20),
+    ter2                      = c(-1.5, 1.5),
+    starting_point_confidence = c(0, 1)
   )
 )
 
 # Aliases: Allow different names to point to the same parameter set
-model_params[["DDM_metaconflict_bounds_fast"]] <- model_params[["DDM_metaconflict_bounds"]]
+# model_params[["DDM_metaconflict_bounds_fast"]] <- model_params[["DDM_metaconflict_bounds"]]
 
 # Helper to retrieve the parameter list for a specific model name.
 get_model_params <- function(model_name) {
