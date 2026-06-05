@@ -1,0 +1,215 @@
+# ==============================================================================
+# fit_stats.R: Group Statistics & Parameter Inspection (V4 - Regression Compatible)
+# ==============================================================================
+# Author: Luc Vermeylen
+# Description: 
+# 1. Reconstructs marginal parameter values using either betas or cell-means.
+# 2. Plots Varying Parameters (Spaghetti & Group Means).
+# 3. Plots Global Parameters (Unique point per subject vs Boundaries).
+# 4. Performs formula-matched RM-ANOVA for all parameters.
+# ==============================================================================
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(data.table)
+library(patchwork)
+
+# --- 1. SETUP ---
+source("helper_functions.R") 
+RESULTS_DIR <- "r_dist_meta_full-ter-amp" # Change to your current results folder
+
+# Define derived parameters to calculate for every condition cell
+DERIVED_PARAMS <- list(
+  #ptb = function(p) p$amp / p$a,
+  #va  = function(p) sqrt(p$tau / p$a * p$v_c) 
+)
+
+# ------------------------------------------------------------------------------
+# 2. DATA LOADING & RECONSTRUCTION
+# ------------------------------------------------------------------------------
+RESULTS_DIR <- file.path("results", RESULTS_DIR)
+files <- list.files(RESULTS_DIR, pattern = "\\.rds$", full.names = TRUE)
+valid_files <- c(); varying_info <- NULL; meta <- NULL
+
+# First pass: identify valid files and the experimental design
+for (f in files) {
+  tmp <- tryCatch(readRDS(f), error = function(e) NULL)
+  if (!is.null(tmp) && is.list(tmp) && "info" %in% names(tmp)) {
+    valid_files <- c(valid_files, f)
+    if (is.null(varying_info)) { 
+      meta <- tmp
+      varying_info <- tmp$info$varying_params 
+    }
+  }
+}
+
+if (length(valid_files) == 0) stop("No valid fit result files found in: ", RESULTS_DIR)
+cat("Found", length(valid_files), "valid fits. Reconstructing cell-means...\n")
+
+# Detect all design variables from formulas or strings
+all_design_vars <- unique(unlist(lapply(varying_info, function(x) if(inherits(x, "formula")) all.vars(x) else x)))
+full_design_grid <- expand.grid(lapply(meta$observations[all_design_vars], function(x) levels(as.factor(x))))
+colnames(full_design_grid) <- all_design_vars
+
+marginal_list <- list()
+for (f in valid_files) {
+  fit <- readRDS(f)
+  
+  # CRITICAL FIX: If this is a regression fit, use the 'best_betas'.
+  # If it's a legacy cell-mean fit, use 'best_params'.
+  params_to_use <- if(!is.null(fit$best_betas)) fit$best_betas else fit$best_params
+  
+  for (i in 1:nrow(full_design_grid)) {
+    current_cell <- full_design_grid[i, , drop = FALSE]
+    
+    # Pluck parameters for this specific cell using the backend plucker
+    p_lvl <- pluck_params(params_to_use, unlist(fit$constants), current_cell, 
+                          fit$info$varying_params, fit$info$model)
+    
+    # Calculate Derived Parameters
+    for (new_p in names(DERIVED_PARAMS)) { p_lvl[[new_p]] <- DERIVED_PARAMS[[new_p]](p_lvl) }
+    
+    res_row <- as.data.frame(p_lvl)
+    res_row$subject_id <- fit$info$subject
+    res_row <- cbind(res_row, current_cell)
+    marginal_list[[paste0(fit$info$subject, "_", i)]] <- res_row
+  }
+}
+
+all_data_long <- bind_rows(marginal_list) %>%
+  pivot_longer(cols = -c(subject_id, all_of(all_design_vars)), names_to = "Parameter", values_to = "Value")
+
+# ------------------------------------------------------------------------------
+# 3. ANALYSIS & PLOTTING ENGINE
+# ------------------------------------------------------------------------------
+model_bounds <- get_bounds(meta$info$model)
+fixed_names  <- names(meta$param_info$fixed)
+
+# Parameters to analyze (Exclude fixed constants, keep estimated ones)
+params_to_analyze <- all_data_long %>%
+  filter(!Parameter %in% fixed_names) %>%
+  group_by(Parameter) %>% filter(sd(Value, na.rm = TRUE) > 1e-12) %>%
+  pull(Parameter) %>% unique()
+
+plots_spaghetti <- list(); plots_average <- list(); plots_global <- list(); stats_results <- list()
+n_subs <- n_distinct(all_data_long$subject_id)
+
+for (p in params_to_analyze) {
+  p_data <- all_data_long %>% filter(Parameter == p)
+  
+  # Detect design factors for this specific parameter
+  p_mapping <- if(p %in% names(varying_info)) varying_info[[p]] else NULL
+  active_vars <- if(!is.null(p_mapping)) {
+    if(inherits(p_mapping, "formula")) all.vars(p_mapping) else p_mapping
+  } else if (p %in% names(DERIVED_PARAMS)) {
+    vars_found <- c()
+    for (v in all_design_vars) {
+      if (n_distinct(p_data %>% group_by(.data[[v]]) %>% summarise(m=mean(Value)) %>% pull(m)) > 1) vars_found <- c(vars_found, v)
+    }
+    vars_found
+  } else { c() }
+  
+  # --- A. STATISTICS (Formula-Matched RM-ANOVA) ---
+  if (n_subs > 1 && length(active_vars) > 0) {
+    # Reconstruct the formula string to match the fit
+    rhs <- if(!is.null(p_mapping) && inherits(p_mapping, "formula")) {
+      gsub("^~\\s*", "", deparse(p_mapping))
+    } else {
+      paste(active_vars, collapse = " * ")
+    }
+    
+    anova_form <- as.formula(paste("Value ~", rhs, "+ Error(subject_id / (", rhs, "))"))
+    res_aov <- tryCatch({ summary(aov(anova_form, data = p_data)) }, error = function(e) NULL)
+    
+    if (!is.null(res_aov)) {
+      for (stratum in names(res_aov)) {
+        tab <- res_aov[[stratum]][[1]]
+        if (!is.null(tab) && "F value" %in% colnames(tab)) {
+          for (row_idx in 1:nrow(tab)) {
+            term <- trimws(rownames(tab)[row_idx])
+            if (term %in% c("Residuals", "(Intercept)")) next
+            f_val <- tab[row_idx, "F value"]; p_val <- tab[row_idx, "Pr(>F)"]
+            if (!is.null(f_val) && !is.na(f_val)) {
+              pes <- tab[row_idx, "Sum Sq"] / (tab[row_idx, "Sum Sq"] + tab["Residuals", "Sum Sq"])
+              stats_results[[paste0(p, term)]] <- data.frame(Parameter = p, Term = term, F = round(as.numeric(f_val), 2),
+                                                             df = paste0(tab[row_idx, "Df"], ",", tab["Residuals", "Df"]), p = round(as.numeric(p_val), 4), PES = round(as.numeric(pes), 3))
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  # --- B. PLOTTING ---
+  if (length(active_vars) > 0) {
+    # --- VARYING PARAMETER PLOTS ---
+    x_var <- if("meta_bin" %in% active_vars) "meta_bin" else active_vars[1]
+    col_var <- if(length(active_vars) > 1) setdiff(active_vars, x_var)[1] else NULL
+    
+    p_data_summarised <- p_data %>% group_by(subject_id, across(all_of(active_vars))) %>% summarise(Value = mean(Value, na.rm=T), .groups = "drop")
+    p_base <- ggplot(p_data_summarised, aes(x = as.factor(.data[[x_var]]), y = Value)) + theme_classic() + labs(title = p, x = x_var, y = NULL)
+    g_aes  <- if(is.null(col_var)) aes(group = 1) else aes(group = .data[[col_var]], color = .data[[col_var]])
+    
+    # 1. Spaghetti (Detailed)
+    p_spag <- p_base
+    if (!is.null(col_var)) {
+      p_spag <- p_spag + geom_line(aes(group = interaction(subject_id, .data[[col_var]]), color = .data[[col_var]]), alpha = 0.08) + scale_color_brewer(palette = "Set1")
+    } else {
+      p_spag <- p_spag + geom_line(aes(group = subject_id), alpha = 0.1, color="gray80")
+    }
+    
+    # 2. Average (Clean)
+    p_cln <- p_base
+    if (!is.null(col_var)) p_cln <- p_cln + scale_color_brewer(palette = "Set1")
+    
+    # Add Summary layers
+    add_summary <- function(plt, mapping) {
+      plt + stat_summary(mapping, fun.data = mean_se, geom = "errorbar", width = 0.1, size = 1, color = "black", position = position_dodge(0.1)) +
+        stat_summary(mapping, fun = mean, geom = "line", size = 1.2, position = position_dodge(0.1)) +
+        stat_summary(mapping, fun = mean, geom = "point", size = 4, position = position_dodge(0.1))
+    }
+    plots_spaghetti[[p]] <- add_summary(p_spag, g_aes)
+    plots_average[[p]]   <- add_summary(p_cln, g_aes)
+    
+  } else {
+    # --- GLOBAL PARAMETER PLOTS ---
+    p_data_unique <- p_data %>% distinct(subject_id, Value)
+    p_bounds <- if(p %in% names(model_bounds$lower)) c(model_bounds$lower[p], model_bounds$upper[p]) else NULL
+    plots_global[[p]] <- ggplot(p_data_unique, aes(x = p, y = Value)) +
+      geom_boxplot(outlier.shape = NA, alpha = 0.3, width = 0.4) +
+      geom_jitter(width = 0.15, alpha = 0.5, color = "firebrick") +
+      {if(!is.null(p_bounds)) geom_hline(yintercept = p_bounds, linetype = "dashed", color = "red", alpha = 0.4)} +
+      theme_classic() + labs(title = paste("Global:", p), x = NULL, y = NULL)
+  }
+}
+
+# ------------------------------------------------------------------------------
+# 4. OUTPUT GENERATION
+# ------------------------------------------------------------------------------
+n_v <- length(plots_spaghetti)
+grid_cols <- if(n_v == 4) 2 else ceiling(sqrt(n_v))
+
+# Plot 1: Global Diagnostics
+if(length(plots_global) > 0) {
+  cat("\nDisplaying Global Parameters (Subject Variation)...\n")
+  print(wrap_plots(plots_global, ncol = 3) + plot_annotation(title = "Global Diagnostics: Boundaries & Variation"))
+}
+
+# Plot 2: Detailed Trends (Spaghetti)
+if(n_v > 0) {
+  cat("Displaying Detailed Trends (Spaghetti)...\n")
+  print(wrap_plots(plots_spaghetti, ncol = grid_cols, guides = "collect") + plot_annotation(title = "Detailed Assessment: Individual Trends") & theme(legend.position = 'bottom'))
+  
+  # Plot 3: Clean Summary (Group Means)
+  cat("Displaying Clean Summary (Means)...\n")
+  print(wrap_plots(plots_average, ncol = grid_cols, guides = "collect") + plot_annotation(title = "Summary Assessment: Group Means") & theme(legend.position = 'bottom'))
+}
+
+# Final Stats Table
+if (length(stats_results) > 0) {
+  cat("\n=================================================================================\n")
+  cat("STATISTICAL SUMMARY: REPEATED MEASURES ANOVA\n")
+  cat("=================================================================================\n")
+  print(as.data.frame(bind_rows(stats_results) %>% mutate(sig = case_when(p < .001 ~ "***", p < .01 ~ "**", p < .05 ~ "*", p < .1 ~ ".", TRUE ~ "ns"))), row.names = FALSE)
+}

@@ -1,0 +1,32 @@
+# --- R standards ---
+.Rhistory
+.Rapp.history
+.RData
+.RDataTmp
+.Ruserdata
+.Renviron
+.Rproj.user/
+*.Rproj
+
+# --- Large Data & HPC results ---
+*.csv
+*.rds
+data/
+results/
+slurm_oe/
+
+# --- Compiled C++ code ---
+*.so
+*.o
+*.dll
+*.exe
+
+# --- macOS junk ---
+.DS_Store
+
+# --- R Markdown / Knitr ---
+*_cache/
+/cache/
+*.utf8.md
+*.knit.md
+.positai
