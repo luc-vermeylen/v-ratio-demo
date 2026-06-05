@@ -1,21 +1,20 @@
 # ==============================================================================
-# DDM FITTING PIPELINE 
+# V-RATIO DEMO
+# ==============================================================================
+# Demo script for estimating metacognitive efficiency (v-ratio)
+# using the Flexible Confidence Boundary (FCB) models from
+# Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). 
+# Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. 
+# Psychological Review.
 # ==============================================================================
 # Author: Luc Vermeylen
-# Date:   2026-01-12
-# 
-# Description:
-# This script fits custom variants of the DDM to observed data.
-# It supports multi-condition designs via parameter expansion. Parameters 
-# defined in VARYING_PARAMS will be estimated separately for each condition 
-# level, while others are shared across conditions.
+# Date:   05/06/2026
 #
 # Usage:
-# 1. Ensure 'helper_functions.R' and 'models.cpp' are in the working directory.
-# 2. Adjust "USER SETTINGS" section below.
-# 3. Run the script:
+# 1. Adjust "USER SETTINGS" section below.
+# 2. Run the script:
 #    - Single fit: Rscript Fitting_Pipeline.R SUBJECT_IDX or just Run/Source in RStudio
-#    - HPC Batch: Use the provided batch.slurm file to loop SUBJECT_IDX from 1:N
+#    - HPC Batch: Use the provided batch_fit.slurm file to loop SUBJECT_IDX from 1:N
 #
 # for each new fit, make a new version of this file with different file name
 # this avoids overwriting/duplicating previous results
@@ -23,12 +22,12 @@
 # Note 1: SUBJECT_IDX refers to the index in sorted(unique(subject_id)).
 # Set SUBJECT_IDX to NULL for a group-level fit (all data combined).
 
-# Note 2: Column expectations:
-# - rt (s for DDM, ms for DMC), acc (0=error, 1=correct)
-# - congruency (-1=incongruent, 1=congruent) for conflict models
-# - condition_id / meta_bin etc. for varying parameters
-# - rtconf, cj (1:6, low to high confidence)
-# - s = 1 for DDM, s = 4 for DMC (= sigma = diffusion noise)
+# Note 2: Your data needs to contain the following columns:
+# - subject column, name can be changed below
+# - rt (reaction time; in seconds)
+# - acc (accuracy; 0=error, 1=correct)
+# - rtconf (confidence RT; in seconds), 
+# - cj (confidence judgement; 0-1 or 1-6, from low to high confidence)
 # ==============================================================================
 
 # ==============================================================================
@@ -46,64 +45,60 @@ suppressPackageStartupMessages({
 # 1. USER SETTINGS (EDIT ONLY THIS SECTION)
 # ==============================================================================
 
-# --- A. SET FOLDER ---
-# output folders will appear in the /results/ folder
-OUTPUT_FOLDER <- "test" # new folder for each fit to avoid overwriting. Will be created if it doesn't exist.
-
-# --- B. DATA INPUT ---
-# put your data in the /data/ folder
-DATA_NAME <- "observed_data_eren_metabinned2.csv"
+# --- A. FOLDER & DATA INPUT ---
+OUTPUT_FOLDER <- "test_vratio" # output folders will appear within /results/
+DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # .csv or .rds supported
 SUBJECT_COL   <- "sub_id"
+SUBJECT_IDX   <- 1  # Change manually (e.g., 1), or NULL for Group Fit
 
-# Local Mode: Change this manually when running directly in RStudio (If running from CLI, this is overridden by the first argument)
-SUBJECT_IDX <- NULL  # e.g., 1, or NULL for Group Fit
+# --- B. MODEL SELECTION ---
+# "FCB_cj2" (binary confidence) or "FCB_cj6" (6-point confidence scale)
+MODEL_NAME    <- "FCB_cj6" 
+print(get_model_params(MODEL_NAME)) # print parameters and their bounds
 
-# --- C. MODEL SELECTION ---
-MODEL_NAME <- "DMC" # C++ function name from models.cpp, and a key in 'model_params' (helper_functions.R) where parameters bounds are specified
+# --- C. VARYING PARAMETERS ---
+# Define which parameters vary by experimental condition.
+# Example: list(v = ~ as.factor(Difficulty), a = ~ as.factor(Difficulty))
+VARYING_PARAMS <- list() # Leave empty if you are not fitting conditions
 
-# --- D. VARYING PARAMETERS ---
-# Example: list(v = "condA", a = "condB", ter = c("condA", "condB"))
-VARYING_PARAMS <- list(
-  v_c = ~ distance + as.factor(meta_bin),
-  a = ~ distance,
-  ter_mean = ~ distance + as.factor(meta_bin),
-  amp = ~ distance 
-)
+# --- D. PARAMETERS TO FIX ---
+# Fix parameters to a constant value (i.e., not estimated).
+# Example: list(starting_point_confidence = 0.5)
+FIXED_PARAMS <- list() 
 
-# --- E. PARAMETERS TO FIX ---
-# Constant values (overrides bounds). Use "ParamName" = value.
-FIXED_PARAMS <- list(
-  tau = 64, beta = 2.5, ter_sd = 39 
-)
-
-# --- F. COST FUNCTION TARGETS ---
-# split_cols must include all variables used in VARYING_PARAMS.
-FIT_TARGETS <- list(
-  list(rt_col = "rt", split_cols = c("acc", "congruency", "distance", "meta_bin"), weight = 1)
-  #list(rt_col = "rtconf", split_cols = c("cj","acc"), weight = 0.25,
-  #list(rt_col = "rtconf", split_cols = "acc", weight = 0.25)
-)
-COST_METHOD = "gsquare"
-
-# --- G. SIMULATION CONSTANTS ---
-sim_constants <- list(
-  ntrials = 5000, # trials used for simulating the predictions in each fitting iterations
-  s       = 4, # diffusion constant, note: Typically 1/.1 for standard DDM, 4 for DMC!
-  dt      = 1 # time step, .001 or 1 depending on model scale (seconds vs ms)
-)
-
-# --- H. OPTIMIZER SETTINGS ---
-ITER_MAX  <- 500   # number of optimization iterations (min 500)
-TRACE <- ITER_MAX/10 # how often to print progress (every TRACE iterations)
-POP_SCALE <- 10    # NP = POP_SCALE * n_parameters (10 is standard)
+# --- E. OPTIMIZER SETTINGS ---
+ITER_MAX  <- 500   # number of optimization iterations (1000 recommended)
 USE_CORES <- 1     # 0 = Single Core, 1 = Parallel
-N_PRED    <- 10000 # Number of trials for final predictions (high-res)
 
 # ==============================================================================
 # 2. DATA PREPARATION (STOP EDITING FROM HERE)
 # ==============================================================================
 
-# 1. Resolve Subject Index from CLI
+# 0. Pipeline internal settings
+COST_METHOD   <- "gsquare"
+sim_constants <- list(ntrials = 5000, s = 1, dt = .001)
+TRACE         <- ITER_MAX / 10 
+POP_SCALE     <- 10
+N_PRED        <- 10000
+
+# Auto-detect experimental conditions to split G-Square likelihood blocks safely
+cond_col_names <- if(length(VARYING_PARAMS) > 0) {
+  unique(unlist(lapply(VARYING_PARAMS, function(x) if(inherits(x, "formula")) all.vars(x) else x)))
+} else { NULL }
+
+# define how the cost function should be built
+FIT_TARGETS <- list(
+  # Eq 4: Primary RT shape, split by Accuracy
+  list(rt_col = "rt", split_cols = c("acc", cond_col_names), weight = 1),
+  
+  # Eq 5: Confidence RT shape, split by Accuracy
+  list(rt_col = "rtconf", split_cols = c("acc", cond_col_names), weight = 1),
+  
+  # Eq 6: Pure confidence proportions
+  list(rt_col = "cj", split_cols = c("acc", "cj", cond_col_names), weight = 1) 
+)
+
+# 1. Resolve Subject Index from CLI, if given
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 0) {
   if (!is.na(args[1]) && args[1] != "NULL") SUBJECT_IDX <- as.numeric(args[1])
@@ -122,7 +117,7 @@ if (grepl("\\.rds$", DATA_FILE, ignore.case = TRUE)) {
 }
 OUTPUT_DIR <- file.path("results", OUTPUT_FOLDER)
 
-# Handle subject filtering
+# 3. Handle subject filtering
 if (!is.null(SUBJECT_IDX)) {
   all_subjects <- sort(unique(raw_data[[SUBJECT_COL]]))
   target_sub_id <- all_subjects[SUBJECT_IDX]
@@ -136,23 +131,20 @@ if (!is.null(SUBJECT_IDX)) {
 }
 if (nrow(observations) == 0) stop("No data found for the selected subject...")
 
-# 3. Configure parameter space
+# 4. Configure parameter space
 config <- get_param_config(MODEL_NAME, VARYING_PARAMS, observations)
 config <- fix_parameters(config, FIXED_PARAMS)
 fit_constants <- c(config$fixed, sim_constants)
 
-# 5. STANDARDIZATION OF FACTORS
+# 5. Standardization of the factors
 observations$acc <- factor(observations$acc, levels = c(0, 1))
-if("congruency" %in% names(observations)) observations$congruency <- factor(observations$congruency, levels = c(-1, 1))
-
-# Gebruik all.vars om variabelen uit formules te halen, of gebruik de string direct
-cond_col_names <- if(length(VARYING_PARAMS) > 0) {
-  unique(unlist(lapply(VARYING_PARAMS, function(x) if(inherits(x, "formula")) all.vars(x) else x)))
-} else { NULL }
-
+if("cj" %in% names(observations)) {
+  cj_levels <- if(MODEL_NAME == "FCB_cj6") 1:6 else 0:1
+  observations$cj <- factor(observations$cj, levels = cj_levels)
+}
+# Ensure condition columns are factors
 if (!is.null(cond_col_names)) {
   for (col_name in cond_col_names) {
-    # Check of de variabele wel echt een kolom is in de data (voorkomt errors bij transformaties)
     if (col_name %in% names(raw_data)) {
       master_lvls <- sort(unique(raw_data[[col_name]]))
       observations[[col_name]] <- factor(observations[[col_name]], levels = master_lvls)
@@ -184,17 +176,7 @@ cat("\nValidating configuration...")
 is_regression <- any(sapply(VARYING_PARAMS, function(x) inherits(x, "formula")))
 all_design_vars <- unique(unlist(lapply(VARYING_PARAMS, all.vars)))
 
-# 1. Check if all design variables are in FIT_TARGETS split_cols
-for (target in FIT_TARGETS) {
-  missing_in_target <- setdiff(all_design_vars, target$split_cols)
-  if (length(missing_in_target) > 0) {
-    stop(paste0("\n[STRICT ERROR] Variables '", paste(missing_in_target, collapse=", "), 
-                "' are used in VARYING_PARAMS but missing in FIT_TARGETS split_cols.",
-                "\nThis is required for valid likelihood blocks."))
-  }
-}
-
-# 2. Print mapping overview
+# Print mapping overview
 cat("\nParameter mapping overview:")
 for (p in names(get_model_params(MODEL_NAME))) {
   if (p %in% names(VARYING_PARAMS)) {
@@ -205,7 +187,7 @@ for (p in names(get_model_params(MODEL_NAME))) {
     cat(sprintf("\n  [SHARED]  %-10s -> Estimated globally", p))
   }
 }
-cat("\n\nAll checks passed. Starting optimization...\n")
+cat("\n\nStarting optimization...\n")
 
 cat("\n==================================================\n")
 cat("FREE PARAMETERS (Optimizing):\n")
@@ -246,7 +228,7 @@ best_betas  <- NULL
 is_regression <- any(sapply(VARYING_PARAMS, function(x) inherits(x, "formula")))
 
 if (is_regression) {
-  cat("Translating Regression Betas to Marginal Cell Means for downstream compatibility...\n")
+  cat("Translating Regression Betas to Marginal Cell Means...\n")
   best_betas <- best_params 
   reconstructed_params <- c()
   
@@ -289,8 +271,6 @@ if (is_regression) {
 pred_constants <- fit_constants
 pred_constants$ntrials <- N_PRED
 
-# we use the new varying_params format here if it was regression, 
-# so the objective_function knows to expect classic cell-means (strings) now!
 sim_varying_params <- list()
 for (p in names(VARYING_PARAMS)) {
   # extract the specific variables for THIS parameter
@@ -381,48 +361,31 @@ print(paste("Best Cost:", round(fit_metrics$best_cost, 4)))
 # ==============================================================================
 cat("\nGenerating diagnostic reports...\n")
 
-# determine columns for faceting based on the design
-is_regression <- any(sapply(VARYING_PARAMS, function(x) inherits(x, "formula")))
-cond_cols_plotting <- if(length(VARYING_PARAMS) > 0) {
-  if(is_regression) unique(unlist(lapply(VARYING_PARAMS, all.vars))) else unique(unlist(VARYING_PARAMS))
-} else { NULL }
-
-# setup arguments for the standard plot_fit
-plot_args <- list(
-  obs            = fit_output$observations,
-  pred           = fit_output$predictions,
-  varying_params = VARYING_PARAMS,
-  model_name     = MODEL_NAME,
-  best_params    = fit_output$best_params,
-  constants      = fit_output$constants,
-  types          = c("dist", "delta", "caf", "mechanism") 
-)
-
 # --- A. SCREEN OUTPUT ---
-# 1. standard plots
-do.call(plot_fit, plot_args)
+# 1. Primary RT Distribution
+plot_dist(obs = fit_output$observations, pred = fit_output$predictions, 
+          val_col = "rt", split_by_acc = TRUE, main_title = "Decision RT")
 
-# 2. new bin-diagnostics
-p_cdf <- plot_defective_cdf_mirror(fit_output$observations, fit_output$predictions, 
-                                          cond_cols = cond_cols_plotting, 
-                                          has_conflict = ("congruency" %in% names(fit_output$observations)))
-p_bin_mass <- plot_bin_mass_mirror(fit_output$final_proportions)
+# 2. Confidence RT Distribution
+plot_dist(obs = fit_output$observations, pred = fit_output$predictions, 
+          val_col = "rtconf", split_by_acc = TRUE, main_title = "Confidence RT")
 
-print(p_cdf)
-print(p_bin_mass)
+# 3. Confidence Rating (CJ) Distribution
+p_cj <- plot_cj_distribution(fit_output$observations, fit_output$predictions)
+print(p_cj)
+
 
 # --- B. PDF OUTPUT ---
 pdf_path <- file.path(OUTPUT_DIR, paste0(file_base, ".pdf"))
-pdf(file = pdf_path, width = 10, height = 7)
+pdf(file = pdf_path, width = 10, height = 6)
 
-# page 1-N: standard plots
-do.call(plot_fit, plot_args)
+plot_dist(obs = fit_output$observations, pred = fit_output$predictions, 
+          val_col = "rt", split_by_acc = TRUE, main_title = "Decision RT")
 
-# page N+1: defective cdf mirror
-print(p_cdf)
+plot_dist(obs = fit_output$observations, pred = fit_output$predictions, 
+          val_col = "rtconf", split_by_acc = TRUE, main_title = "Confidence RT")
 
-# page N+2: bin mass mirror
-print(p_bin_mass)
+print(p_cj)
 
 dev.off() 
 

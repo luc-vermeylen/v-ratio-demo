@@ -365,6 +365,11 @@ determine_quantiles <- function(observed_rt_vector,
   
   # 1. Clean data
   if (is.null(observed_rt_vector)) return(NULL)
+  
+  # If the target is a factor (e.g., cj), we cannot make RT quantiles. 
+  # Returning NULL will triggers pure proportion fitting in the pipeline
+  if (!is.numeric(observed_rt_vector)) return(NULL) 
+  
   observed_rt_vector <- observed_rt_vector[!is.na(observed_rt_vector)]
   n <- length(observed_rt_vector)
   
@@ -1681,4 +1686,44 @@ plot_bin_mass_mirror <- function(final_proportions) {
     theme(strip.background = element_rect(fill = "gray95", color = NA),
           strip.text = element_text(face = "bold"),
           panel.grid.minor = element_blank())
+}
+
+# Plot Confidence Judgment (CJ) Distribution
+# Generates a barplot of observed vs predicted confidence rating frequencies,
+# separated for Correct and Error trials.
+plot_cj_distribution <- function(obs, pred, main_title = "Confidence Rating Distribution") {
+  
+  # Helper to calculate proportions
+  calc_props <- function(df, source_name) {
+    if (is.null(df) || nrow(df) == 0) return(NULL)
+    
+    df %>%
+      filter(!is.na(cj), !is.na(acc)) %>%
+      group_by(acc, cj) %>%
+      summarise(count = n(), .groups = "drop_last") %>%
+      mutate(prop = count / sum(count),
+             source = source_name,
+             Accuracy = ifelse(as.numeric(as.character(acc)) == 1, "Correct", "Error")) %>%
+      ungroup()
+  }
+  
+  obs_df  <- calc_props(as.data.frame(obs), "Observed")
+  pred_df <- calc_props(as.data.frame(pred), "Predicted")
+  plot_df <- bind_rows(obs_df, pred_df)
+  
+  if (nrow(plot_df) == 0) return(NULL)
+  
+  p <- ggplot(plot_df, aes(x = as.factor(cj), y = prop, fill = source)) +
+    geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "black", width = 0.7) +
+    facet_wrap(~Accuracy) +
+    scale_fill_manual(values = c("Observed" = "gray50", "Predicted" = "firebrick3")) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_bw(base_size = 14) +
+    labs(title = main_title, x = "Confidence Rating", y = "Relative Frequency", fill = "Data") +
+    theme(strip.background = element_rect(fill = "gray90"),
+          strip.text = element_text(face = "bold"),
+          legend.position = "bottom",
+          panel.grid.major.x = element_blank())
+  
+  return(p)
 }
