@@ -117,6 +117,15 @@ if (grepl("\\.rds$", DATA_FILE, ignore.case = TRUE)) {
 }
 OUTPUT_DIR <- file.path("results", OUTPUT_FOLDER)
 
+# Check for required columns ---
+required_cols <- c("rt", "acc", "rtconf", "cj", SUBJECT_COL)
+missing_cols <- setdiff(required_cols, names(raw_data))
+if (length(missing_cols) > 0) {
+  stop(paste("\n[DATA ERROR] Your data is missing the following required columns:", 
+             paste(missing_cols, collapse = ", "), 
+             "\nPlease rename your columns to match exactly: rt, acc, rtconf, cj"))
+}
+
 # 3. Handle subject filtering
 if (!is.null(SUBJECT_IDX)) {
   all_subjects <- sort(unique(raw_data[[SUBJECT_COL]]))
@@ -137,6 +146,13 @@ config <- fix_parameters(config, FIXED_PARAMS)
 fit_constants <- c(config$fixed, sim_constants)
 
 # 5. Standardization of the factors
+if (MODEL_NAME == "FCB_cj2" && !all(raw_data$cj %in% c(0, 1), na.rm = TRUE)) {
+  stop("\n[DATA ERROR] You selected FCB_cj2, but your 'cj' column contains values other than 0 and 1. Please recode your binary confidence to 0 (Low) and 1 (High).")
+}
+if (MODEL_NAME == "FCB_cj6" && !all(raw_data$cj %in% 1:6, na.rm = TRUE)) {
+  stop("\n[DATA ERROR] You selected FCB_cj6, but your 'cj' column contains values outside the 1-6 range.")
+}
+
 observations$acc <- factor(observations$acc, levels = c(0, 1))
 if("cj" %in% names(observations)) {
   cj_levels <- if(MODEL_NAME == "FCB_cj6") 1:6 else 0:1
