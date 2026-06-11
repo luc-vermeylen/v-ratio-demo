@@ -3,7 +3,7 @@
 
 A plug-and-play computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**). 
 
-This pipeline fits v-ratio using the **Flexible Confidence Boundary (FCB)** models described in:
+This pipeline fits **v-ratio** using the **Flexible Confidence Boundary (FCB)** models described in:
 
  *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
  
