@@ -92,10 +92,10 @@ FIT_TARGETS <- list(
   list(rt_col = "rt", split_cols = c("acc", cond_col_names), weight = 1),
   
   # Eq 5: Confidence RT shape, split by Accuracy
-  list(rt_col = "rtconf", split_cols = c("acc", cond_col_names), weight = 1),
+  list(rt_col = "rtconf", split_cols = c("acc", cond_col_names), weight = .5),
   
   # Eq 6: Pure confidence proportions
-  list(rt_col = "cj", split_cols = c("acc", "cj", cond_col_names), weight = 1) 
+  list(rt_col = "cj", split_cols = c("acc", "cj", cond_col_names), weight = .5) 
 )
 
 # 1. Resolve Subject Index from CLI, if given

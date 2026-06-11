@@ -49,8 +49,15 @@ cat("Found", length(valid_files), "valid fits. Reconstructing cell-means...\n")
 
 # Detect all design variables from formulas or strings
 all_design_vars <- unique(unlist(lapply(varying_info, function(x) if(inherits(x, "formula")) all.vars(x) else x)))
-full_design_grid <- expand.grid(lapply(meta$observations[all_design_vars], function(x) levels(as.factor(x))))
-colnames(full_design_grid) <- all_design_vars
+
+if (length(all_design_vars) == 0) {
+  # No conditions: create a 1-row, 0-column dataframe so the loop runs exactly once
+  full_design_grid <- data.frame(row.names = 1) 
+} else {
+  # Conditions exist: build the full interaction grid
+  full_design_grid <- expand.grid(lapply(meta$observations[all_design_vars], function(x) levels(as.factor(x))))
+  colnames(full_design_grid) <- all_design_vars
+}
 
 marginal_list <- list()
 for (f in valid_files) {
