@@ -105,11 +105,15 @@ The following R packages are required. *(If running on the HPC, ensure your cond
 The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data, minimizing $G^2$ is mathematically equivalent to Maximum Likelihood Estimation (MLE).
 
 The standard formula for $G^2$ is:
-$$G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)$$
-*(Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).*
+
+$$
+G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)
+$$
+
+*Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model.*
 
 ### Evaluating the FCB Model (The 3 Targets)
-To capture both the primary decision and the confidence judgement, the pipeline replicates the exact fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are all weighted equally (Weight = 1.0):
+To capture both the primary decision and the confidence judgement, the pipeline replicates the exact fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are all weighted equally:
 
 1. **Target 1: Primary Decision RTs**
    The pipeline calculates dynamic RT quantiles (e.g., 0.1, 0.3, 0.5, 0.7, 0.9) separately for Correct and Error trials (depending on how many trials there are). It calculates the $G^2$ difference between the observed and predicted probability mass in each of these primary decision bins.
