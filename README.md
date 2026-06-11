@@ -3,7 +3,8 @@
 
 A plug-and-play computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**). 
 
-This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in:
+This pipeline fits v-ratio using the **Flexible Confidence Boundary (FCB)** models described in:
+ *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
  *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
 The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using G-Square minimization. It natively supports multi-condition experimental designs and is optimized to run in batch mode on both local laptops and High-Performance Computing (HPC) clusters.
