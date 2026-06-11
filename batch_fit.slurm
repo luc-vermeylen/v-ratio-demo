@@ -10,7 +10,7 @@
 #SBATCH --cluster=wice
 
 # ==============================================================================
-# HOW TO USE THIS PIPELINE
+# HOW TO USE THIS BATCH SCRIPT ON THE KU LEUVEN HPC
 # ==============================================================================
 : <<'HELP'
 1. SETUP YOUR ENVIRONMENT (Run once on the login node):

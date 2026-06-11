@@ -1,68 +1,101 @@
-***
 
-# DMC Fitting Pipeline
+# V-Ratio Fitting Pipeline (FCB Model)
 
-A pipeline for fitting and analyzing DMC models. It allows you to specify your own models in C++ and handles multi-condition designs, custom cost functions and is optimized for the HPC cluster.
+A plug-and-play computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**). 
 
-## Required Files
-*   **`models.cpp`**: The C++ simulation engine. Where you can define new models.
-*   **`helper_functions.R`**: Core logic for parameter mapping, fitting and plotting. Don't touch, except for defining the parameters of a newly added model!
-*   **`fit_template.R`**: The main script where you define the model and fit settings. Take a copy and give it a name that relates to your model, don't use the original.
-*   **`batch_fit.slurm`**: Submission script for the HPC.
-*   **Post-Fit Analysis scripts**: `fit_assess.R`, `fit_stats.R`, and `fit_compare.R`.
+This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in:
+ *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
-## 1. Configuring a Fit (`fit_template.R`)
-Open `fit_template.R` and adjust the **USER SETTINGS**:
-*   **`OUTPUT_DIR`**: Set a unique folder name for each model variant (e.g., `"full_model"`, `"fixed_amp"`,  `"v_by_condition"`). Best to also take a copy of fit_template.R and name it like the **`OUTPUT_DIR`** folder for reference later and keeping the template itself clean.
-*   **`VARYING_PARAMS`**: Define which parameters vary by which column(s) in your CSV. Use the format `parameter = ~ factor1 * factor2`.
-    *   *Example:* `list(amp = ~ distance * meta_bin` fits a full interaction for the amp parameter.
-*   **`FIT_TARGETS`**: Ensure all columns used in `VARYING_PARAMS` are also included in `split_cols`. This is critical for correct Likelihood calculation.
-*   **`FIXED_PARAMS`**: Use this to hold specific parameters constant (e.g., `tau = 60`).
+The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using G-Square minimization. It natively supports multi-condition experimental designs and is optimized for both local laptops and High-Performance Computing (HPC) clusters.
 
-## 2. Running on the HPC (`batch_fit.slurm`)
+---
 
-Navigate to the folder on the HPC where you store these scripts, including the batch_fit.slurm.
+## ⚠️ Required Data Format
+Before you begin, your dataset (CSV or RDS) **must** contain the following columns exactly as named:
 
-**Single model submission:**
+*   **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings).
+*   **`rt`**: Primary decision reaction time (**in seconds**).
+*   **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct).
+*   **`rtconf`**: Confidence reaction time (**in seconds**).
+*   **`cj`**: Confidence judgment rating. 
+    * If using binary confidence, this must be coded as `0` (Low) and `1` (High).
+    * If using a 6-point scale, this must be coded as `1` through `6`.
+
+---
+
+## 📂 Core Files
+
+*   **`fit_vratio_demo.R`**: The main configuration script. **This is the only file you need to edit.**
+*   **`run_batch_local.R`**: A handy script to automatically loop through all subjects and fit them on your local computer.
+*   **`batch_fit.slurm`**: Submission script for running massive parallel fits on an HPC cluster (optimized for the KU Leuven HPC)
+*   **Post-Fit Analysis scripts**: `fit_assess.R`, `fit_compare.R`, and `fit_stats.R`.
+*   *Backend Files (Do not touch)*: `models.cpp` (C++ engine) and `helper_functions.R` (core R logic).
+
+---
+
+## 🛠️ Step-by-Step Workflow
+
+### Step 1: Configure & Fit
+
+Open **`fit_vratio_demo.R`** and adjust the **USER SETTINGS**:
+
+*   **`OUTPUT_FOLDER`**: Give your model a unique folder name (e.g., `"vratio_baseline"` or `"vratio_by_emotion"`).
+*   **`DATA_NAME`**: The name of your dataset inside the `data/` folder.
+*   **`MODEL_NAME`**: Choose `"FCB_cj2"` (binary confidence) or `"FCB_cj6"` (6-point scale).
+*   **`VARYING_PARAMS`**: Define if parameters change between experimental conditions using R formulas. 
+    * *Example:* `list(v = ~ as.factor(Difficulty))` will estimate a separate drift rate for each difficulty level. The pipeline will automatically split your data and likelihood blocks safely!
+
+**To Run the Fits:**
+
+*   **Locally (Laptop):** Open `run_batch_local.R` and source it. It will safely loop through every subject in your dataset.
+*   **On the HPC:** Navigate to the folder in your terminal and submit the `batch_fit.slurm` using sbatch:
+
 ```bash
-sbatch --job-name=my_model --array=1-51 --export=NONE,R_SCRIPT=fit_template.R,WORKDIR=$VSC_DATA/my_project batch_fit.slurm
+sbatch --job-name=vratio --array=1-50 --export=NONE,R_SCRIPT=fit_vratio_demo.R batch_fit.slurm
 ```
 
-**Multiple models submission at once:**
-```bash
-for script in fit_variant_*.R; do
-  sbatch --job-name=$script --array=1-51 --export=NONE,R_SCRIPT=$script,WORKDIR=$VSC_DATA/my_project batch_fit.slurm
-done
-```
+More information on how to use this on the HPC is included in the `batch_fit.slurm` file.
 
-Don't forget to set up your conda environment with the necessary packages. See batch_fit.slurm for more information on how to. 
+### Step 2: Visual Assessment (`fit_assess.R`)
 
-## 3. Analysis Workflow
+**⚠️ You MUST run this script before comparing models or running statistics!**
 
-### Step 1: Visual Assessment (`fit_assess.R`)
-Run this first to check if the model actually describes the behavior.
-*   Aggregates `.rds` files into a master table.
-*   Generates "Mirror" RT distributions, CAFs, and Delta plots.
-*   Saves `fit_metrics_summary.csv` (required for further stats and model comparison).
+Open `fit_assess.R`, set `RESULTS_DIR` to your output folder, and run it.
 
-### Step 2: Parameter Statistics (`fit_stats.R`)
-Analyze the estimated parameters across the group.
-*   **Varying Parameters**: Generates Spaghetti plots and clean Group-Mean plots. Automatically runs RM-ANOVAs and calculates Effect Sizes (PES).
-*   **Global Parameters**: Generates boxplots of shared parameters against model boundaries to check for "boundary swarming."
-*   **Derived Parameters**: Add custom formulas (e.g., `amp / a`) in the `DERIVED_PARAMS` list.
+*   It aggregates all the heavy individual `.rds` fit files into a lightweight master dataset.
+*   It generates a PDF report containing:
+    1. Decision RT distributions.
+    2. Confidence RT distributions.
+    3. Confidence mass distributions.
+*   It saves `fit_metrics_summary.csv` (which is strictly required for Step 3).
 
 ### Step 3: Model Comparison (`fit_compare.R`)
-Compare different model folders to find the best fit.
-*   Ranks models using **BIC** and **BIC Weights**.
-*   Includes a **Validity Check** to ensure all models were fitted on the same bin structures, which is necessary to validly compare G2/BIC.
 
-## Important Notes
-*   **BIC Validity**: Only compare BICs if the models used the same `FIT_TARGETS` splits.
-*   **Subject IDs**: Ensure IDs are unique in your data for the RM-ANOVA to work.
+If you fit multiple models (e.g., one where `v` varies by condition, and one where `vratio` varies by condition), this script will tell you which one fits the data best.
 
-  ## Requirements
-The following R packages are required:
-* `Rcpp`, `RcppZiggurat` (for simulation)
-* `DEoptim` (for fitting)
-* `dplyr`, `tidyr`, `data.table` (for data handling)
-* `ggplot2`, `patchwork` (for plotting)
+*   Open `fit_compare.R` and list the folders you want to compare in `FOLDERS_TO_COMPARE`.
+*   It reads the CSVs generated in Step 2 and ranks the models using **BIC** and **BIC Weights**.
+*   It outputs a visual comparison plot and a detailed summary table.
+
+### Step 4: Parameter Statistics (`fit_stats.R`)
+
+Once you have selected your winning model, use `fit_stats.R` to analyze the actual parameters.
+
+*   **Global Parameters**: Generates boxplots of shared parameters against model boundaries to check for "boundary swarming" (e.g., ensuring `ter2` didn't crash into its lower limit).
+*   **Varying Parameters**: Generates Spaghetti plots and Group-Mean plots for any parameters you manipulated. Automatically runs RM-ANOVAs and calculates Effect Sizes (PES).
+
+---
+
+## 📌 Important Notes
+
+*   **Time Scaling:** Ensure your `rt` and `rtconf` columns are in **SECONDS** (e.g., `0.450`, not `450`). The integration step is set to `dt = 0.001` to match seconds.
+*   **Subject IDs:** Ensure your `sub_id` column contains unique identifiers for the Repeated-Measures ANOVAs to work correctly in `fit_stats.R`.
+
+## 📦 Requirements
+
+The following R packages are required. *(If running on the HPC, ensure your conda environment contains these).*
+
+*   `Rcpp`, `RcppZiggurat` (for the C++ simulation engine)
+*   `DEoptim` (for global parameter optimization)
+*   `dplyr`, `tidyr`, `data.table` (for data wrangling)
+*   `ggplot2`, `patchwork` (for plotting)

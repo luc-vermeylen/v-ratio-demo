@@ -1,5 +1,6 @@
 # ==============================================================================
-# fit_compare.R: Robust Model Comparison (Hybrid Compatible)
+# fit_compare.R: Model Comparison
+# Author: Luc Vermeylen
 # ==============================================================================
 library(dplyr)
 library(tidyr)
@@ -7,36 +8,39 @@ library(ggplot2)
 library(patchwork)
 
 # --- 1. SETTINGS ---
-model_folders <- c(
-  #"r_dist_meta_full",
-  #"r_dist_meta_full-v",
-  #"r_dist_meta_full-a",
-  #"r_dist_meta_full-ter",
-  #"r_dist_meta_full-amp"
-  #"r_dist_meta_full-ter-v",
-  #"r_dist_meta_full-ter-a",
-  "r_dist_meta_full-ter-amp",
-  #"r_dist_meta_full-ter-amp-v",
-  #"r_dist_meta_full-ter-amp-a"
-  "r_dist_meta_full-ter-amp_I"
-  # Add other folders here
-)
+# Define which model folders you want to compare. 
+# They must be located inside the "results/" directory.
+# Set to "ALL" to automatically compare every folder in the results directory.
 
-model_labels <- NULL 
-CSV_NAME <- "fit_metrics_summary.csv" 
+FOLDERS_TO_COMPARE <- "ALL" 
+# Example for specific folders: c("test_vratio_1", "test_vratio_2")
 
 # ------------------------------------------------------------------------------
 # 2. DATA LOADING & CLEANING
 # ------------------------------------------------------------------------------
 cat("Loading model data...\n")
-all_model_data <- list()
-model_folders <- list.dirs("results", full.names = TRUE, recursive = FALSE)
 
-if (is.null(model_labels)) model_labels <- model_folders
+# Auto-detect or use specified folders
+if (length(FOLDERS_TO_COMPARE) == 1 && FOLDERS_TO_COMPARE == "ALL") {
+  model_folders <- list.dirs("results", full.names = TRUE, recursive = FALSE)
+} else {
+  model_folders <- file.path("results", FOLDERS_TO_COMPARE)
+}
+
+if (length(model_folders) < 2) {
+  stop("You need at least 2 model folders to run a comparison!")
+}
+
+# Clean up labels for plotting (remove "results/" from the name)
+model_labels <- basename(model_folders)
+
+all_model_data <- list()
 
 for (i in seq_along(model_folders)) {
   folder <- model_folders[i]
   path <- file.path(folder, CSV_NAME)
+  
+  # Fallback for older versions
   if (!file.exists(path)) path <- file.path(folder, "master_parameters_report.csv")
   
   if (!file.exists(path)) {
@@ -50,6 +54,8 @@ for (i in seq_along(model_folders)) {
   
   all_model_data[[folder]] <- df
 }
+
+if (length(all_model_data) == 0) stop("No valid data found to compare.")
 
 comparison_df <- bind_rows(all_model_data) %>% mutate(subject_id = as.character(subject_id))
 
@@ -150,4 +156,3 @@ if (length(unique_bin_avgs) > 1) {
 }
 
 cat("============================================================================================\n")
-write.csv(group_summary, "summary_model_comparison_detailed.csv", row.names = FALSE)

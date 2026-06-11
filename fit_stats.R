@@ -1,12 +1,12 @@
 # ==============================================================================
-# fit_stats.R: Group Statistics & Parameter Inspection (V4 - Regression Compatible)
+# fit_stats.R: Group Statistics & Parameter Inspection
 # ==============================================================================
 # Author: Luc Vermeylen
 # Description: 
-# 1. Reconstructs marginal parameter values using either betas or cell-means.
-# 2. Plots Varying Parameters (Spaghetti & Group Means).
-# 3. Plots Global Parameters (Unique point per subject vs Boundaries).
-# 4. Performs formula-matched RM-ANOVA for all parameters.
+# 1. Reconstructs marginal cell means from parameter betas.
+# 2. Plots Varying Parameters by conditions if present (Spaghetti & Group Means).
+# 3. Plots Global Parameters (i.e. not varying by condition).
+# 4. Performs RM-ANOVA for all parameters.
 # ==============================================================================
 
 library(dplyr)
@@ -15,15 +15,12 @@ library(ggplot2)
 library(data.table)
 library(patchwork)
 
-# --- 1. SETUP ---
+# --- 1. SETTINGS ---
 source("helper_functions.R") 
-RESULTS_DIR <- "r_dist_meta_full-ter-amp" # Change to your current results folder
+RESULTS_DIR <- "test_vratio" # Change to your current results folder
 
 # Define derived parameters to calculate for every condition cell
-DERIVED_PARAMS <- list(
-  #ptb = function(p) p$amp / p$a,
-  #va  = function(p) sqrt(p$tau / p$a * p$v_c) 
-)
+DERIVED_PARAMS <- list()
 
 # ------------------------------------------------------------------------------
 # 2. DATA LOADING & RECONSTRUCTION
@@ -63,7 +60,7 @@ marginal_list <- list()
 for (f in valid_files) {
   fit <- readRDS(f)
   
-  # CRITICAL FIX: If this is a regression fit, use the 'best_betas'.
+  # If this is a regression fit, use the 'best_betas'.
   # If it's a legacy cell-mean fit, use 'best_params'.
   params_to_use <- if(!is.null(fit$best_betas)) fit$best_betas else fit$best_params
   
@@ -78,7 +75,7 @@ for (f in valid_files) {
     for (new_p in names(DERIVED_PARAMS)) { p_lvl[[new_p]] <- DERIVED_PARAMS[[new_p]](p_lvl) }
     
     res_row <- as.data.frame(p_lvl)
-    res_row$subject_id <- fit$info$subject
+    res_row$subject_id <- as.character(fit$info$subject)
     res_row <- cbind(res_row, current_cell)
     marginal_list[[paste0(fit$info$subject, "_", i)]] <- res_row
   }
@@ -117,7 +114,7 @@ for (p in params_to_analyze) {
     vars_found
   } else { c() }
   
-  # --- A. STATISTICS (Formula-Matched RM-ANOVA) ---
+  # --- A. STATISTICS ---
   if (n_subs > 1 && length(active_vars) > 0) {
     # Reconstruct the formula string to match the fit
     rhs <- if(!is.null(p_mapping) && inherits(p_mapping, "formula")) {
@@ -158,7 +155,7 @@ for (p in params_to_analyze) {
     p_base <- ggplot(p_data_summarised, aes(x = as.factor(.data[[x_var]]), y = Value)) + theme_classic() + labs(title = p, x = x_var, y = NULL)
     g_aes  <- if(is.null(col_var)) aes(group = 1) else aes(group = .data[[col_var]], color = .data[[col_var]])
     
-    # 1. Spaghetti (Detailed)
+    # 1. Spaghetti Plot
     p_spag <- p_base
     if (!is.null(col_var)) {
       p_spag <- p_spag + geom_line(aes(group = interaction(subject_id, .data[[col_var]]), color = .data[[col_var]]), alpha = 0.08) + scale_color_brewer(palette = "Set1")
@@ -166,7 +163,7 @@ for (p in params_to_analyze) {
       p_spag <- p_spag + geom_line(aes(group = subject_id), alpha = 0.1, color="gray80")
     }
     
-    # 2. Average (Clean)
+    # 2. Average Plot
     p_cln <- p_base
     if (!is.null(col_var)) p_cln <- p_cln + scale_color_brewer(palette = "Set1")
     
@@ -183,11 +180,13 @@ for (p in params_to_analyze) {
     # --- GLOBAL PARAMETER PLOTS ---
     p_data_unique <- p_data %>% distinct(subject_id, Value)
     p_bounds <- if(p %in% names(model_bounds$lower)) c(model_bounds$lower[p], model_bounds$upper[p]) else NULL
-    plots_global[[p]] <- ggplot(p_data_unique, aes(x = p, y = Value)) +
+    plots_global[[p]] <- ggplot(p_data_unique, aes(x = "", y = Value)) +
       geom_boxplot(outlier.shape = NA, alpha = 0.3, width = 0.4) +
       geom_jitter(width = 0.15, alpha = 0.5, color = "firebrick") +
       {if(!is.null(p_bounds)) geom_hline(yintercept = p_bounds, linetype = "dashed", color = "red", alpha = 0.4)} +
-      theme_classic() + labs(title = paste("Global:", p), x = NULL, y = NULL)
+      theme_classic() + 
+      labs(title = paste("Global:", p), x = NULL, y = NULL) +
+      theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
   }
 }
 
@@ -197,26 +196,26 @@ for (p in params_to_analyze) {
 n_v <- length(plots_spaghetti)
 grid_cols <- if(n_v == 4) 2 else ceiling(sqrt(n_v))
 
-# Plot 1: Global Diagnostics
+# Plot 1: Global Parameters
 if(length(plots_global) > 0) {
-  cat("\nDisplaying Global Parameters (Subject Variation)...\n")
-  print(wrap_plots(plots_global, ncol = 3) + plot_annotation(title = "Global Diagnostics: Boundaries & Variation"))
+  print(wrap_plots(plots_global, ncol = 3) + 
+          plot_annotation(title = "Global Parameters and optimization boundaries"))
 }
 
-# Plot 2: Detailed Trends (Spaghetti)
+# Plot 2: Spaghetti Plot
 if(n_v > 0) {
-  cat("Displaying Detailed Trends (Spaghetti)...\n")
-  print(wrap_plots(plots_spaghetti, ncol = grid_cols, guides = "collect") + plot_annotation(title = "Detailed Assessment: Individual Trends") & theme(legend.position = 'bottom'))
+  print(wrap_plots(plots_spaghetti, ncol = grid_cols, guides = "collect") + 
+          plot_annotation(title = "Individual Trends") & theme(legend.position = 'bottom'))
   
-  # Plot 3: Clean Summary (Group Means)
-  cat("Displaying Clean Summary (Means)...\n")
-  print(wrap_plots(plots_average, ncol = grid_cols, guides = "collect") + plot_annotation(title = "Summary Assessment: Group Means") & theme(legend.position = 'bottom'))
+  # Plot 3: Group Means
+  print(wrap_plots(plots_average, ncol = grid_cols, guides = "collect") + 
+          plot_annotation(title = "Group Means") & theme(legend.position = 'bottom'))
 }
 
 # Final Stats Table
 if (length(stats_results) > 0) {
   cat("\n=================================================================================\n")
-  cat("STATISTICAL SUMMARY: REPEATED MEASURES ANOVA\n")
+  cat("STATISTICAL SUMMARY\n")
   cat("=================================================================================\n")
   print(as.data.frame(bind_rows(stats_results) %>% mutate(sig = case_when(p < .001 ~ "***", p < .01 ~ "**", p < .05 ~ "*", p < .1 ~ ".", TRUE ~ "ns"))), row.names = FALSE)
 }

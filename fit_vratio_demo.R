@@ -8,13 +8,14 @@
 # Psychological Review.
 # ==============================================================================
 # Author: Luc Vermeylen
-# Date:   05/06/2026
+# Date:   11/06/2026
 #
 # Usage:
 # 1. Adjust "USER SETTINGS" section below.
 # 2. Run the script:
-#    - Single fit: Rscript Fitting_Pipeline.R SUBJECT_IDX or just Run/Source in RStudio
-#    - HPC Batch: Use the provided batch_fit.slurm file to loop SUBJECT_IDX from 1:N
+#    - Single fit: Run/Source in RStudio
+#    - Local Batch: see batch_local.R  
+#    - HPC Batch: see batch_fit.slurm 
 #
 # for each new fit, make a new version of this file with different file name
 # this avoids overwriting/duplicating previous results
@@ -29,17 +30,6 @@
 # - rtconf (confidence RT; in seconds), 
 # - cj (confidence judgement; 0-1 or 1-6, from low to high confidence)
 # ==============================================================================
-
-# ==============================================================================
-# 0. ENVIRONMENT SETUP
-# ==============================================================================
-Sys.setenv(LC_ALL = "C")
-Sys.setenv(LANG = "C")
-suppressPackageStartupMessages({
-  library(Rcpp); library(DEoptim); library(dplyr); library(RcppZiggurat)
-  source("helper_functions.R")
-  sourceCpp("models.cpp")
-})
 
 # ==============================================================================
 # 1. USER SETTINGS (EDIT ONLY THIS SECTION)
@@ -73,6 +63,13 @@ USE_CORES <- 1     # 0 = Single Core, 1 = Parallel
 # ==============================================================================
 # 2. DATA PREPARATION (STOP EDITING FROM HERE)
 # ==============================================================================
+Sys.setenv(LC_ALL = "C")
+Sys.setenv(LANG = "C")
+suppressPackageStartupMessages({
+  library(Rcpp); library(DEoptim); library(dplyr); library(RcppZiggurat)
+  source("helper_functions.R")
+  sourceCpp("models.cpp")
+})
 
 # 0. Pipeline internal settings
 COST_METHOD   <- "gsquare"
