@@ -110,7 +110,7 @@ $$
 G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)
 $$
 
-*Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model.*
+(Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).
 
 ### Evaluating the FCB Model (The 3 Targets)
 To capture both the primary decision and the confidence judgement, the pipeline replicates the exact fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are all weighted equally:
