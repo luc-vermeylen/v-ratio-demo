@@ -49,7 +49,7 @@ suppressPackageStartupMessages({
 OUTPUT_FOLDER <- "test_vratio" # output folders will appear within /results/
 DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # .csv or .rds supported
 SUBJECT_COL   <- "sub_id"
-SUBJECT_IDX   <- 1  # Change manually (e.g., 1), or NULL for Group Fit
+SUBJECT_IDX   <- 1  # Change manually (e.g., 1), or NULL for Group Fit, or gets overwritten if using batch script
 
 # --- B. MODEL SELECTION ---
 # "FCB_cj2" (binary confidence) or "FCB_cj6" (6-point confidence scale)
@@ -67,7 +67,7 @@ VARYING_PARAMS <- list() # Leave empty if you are not fitting conditions
 FIXED_PARAMS <- list() 
 
 # --- E. OPTIMIZER SETTINGS ---
-ITER_MAX  <- 500   # number of optimization iterations (1000 recommended)
+ITER_MAX  <- 1000   # number of optimization iterations (1000 recommended)
 USE_CORES <- 1     # 0 = Single Core, 1 = Parallel
 
 # ==============================================================================

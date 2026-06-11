@@ -6,7 +6,7 @@ using namespace Rcpp;
 static Ziggurat::Ziggurat::Ziggurat zigg;
 
 // ============================================================================
-// MODEL 1: TWO-STAGE DDM (BINARY CONFIDENCE)
+// MODEL 1: Flexible Confidence Bounds Model (BINARY CONFIDENCE)
 // ============================================================================
 // [[Rcpp::export]]
 DataFrame FCB_cj2(
@@ -75,7 +75,7 @@ DataFrame FCB_cj2(
 } 
 
 // ============================================================================
-// MODEL 2: TWO-STAGE DDM (6-POINT SCALE CONFIDENCE)
+// MODEL 2: Flexible Confidence Bounds Model (6-POINT SCALE CONFIDENCE)
 // ============================================================================
 // [[Rcpp::export]]
 DataFrame FCB_cj6(
