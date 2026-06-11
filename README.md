@@ -99,3 +99,26 @@ The following R packages are required. *(If running on the HPC, ensure your cond
 *   `DEoptim` (for global parameter optimization)
 *   `dplyr`, `tidyr`, `data.table` (for data wrangling)
 *   `ggplot2`, `patchwork` (for plotting)
+
+## 🧮 The Mathematics of the Cost Function ($G^2$)
+
+The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data, minimizing $G^2$ is mathematically equivalent to Maximum Likelihood Estimation (MLE).
+
+The standard formula for $G^2$ is:
+$$G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)$$
+*(Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).*
+
+### Evaluating the FCB Model (The 3 Targets)
+To capture both the primary decision and the confidence judgement, the pipeline replicates the exact fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are all weighted equally (Weight = 1.0):
+
+1. **Target 1: Primary Decision RTs**
+   The pipeline calculates dynamic RT quantiles (e.g., 0.1, 0.3, 0.5, 0.7, 0.9) separately for Correct and Error trials (depending on how many trials there are). It calculates the $G^2$ difference between the observed and predicted probability mass in each of these primary decision bins.
+2. **Target 2: Confidence RTs**
+   The pipeline performs the same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
+3. **Target 3: Pure Confidence Proportions**
+   Instead of looking at time, this target evaluates the raw choices. It calculates the proportion of trials falling into each confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
+
+### "Independent Likelihood Blocks"
+If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. 
+
+---
