@@ -6,7 +6,7 @@ A plug-and-play computational modeling pipeline for estimating metacognitive eff
 This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in:
  *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
-The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using G-Square minimization. It natively supports multi-condition experimental designs and is optimized for both local laptops and High-Performance Computing (HPC) clusters.
+The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using G-Square minimization. It natively supports multi-condition experimental designs and is optimized to run in batch mode on both local laptops and High-Performance Computing (HPC) clusters.
 
 ---
 
