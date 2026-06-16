@@ -126,7 +126,7 @@ To capture both the primary decision and the confidence judgement, the pipeline 
    * **11 to 30 trials:** 2 bins (median split: 0.5)
    * **$\le$ 10 trials (or zero variance):** The pipeline safely abandons RT shape fitting and evaluates the pure marginal probability mass of the cell (e.g., fitting the overall error rate without penalizing RT shape).
    
-   It then calculates the $G^2$ difference between the observed and predicted probability mass in each of these primary decision bins.
+   It then calculates the $G^2$ difference between the observed and predicted probability mass over these primary decision bins.
 
 2. **Target 2: Confidence RTs**
    The pipeline performs the same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
