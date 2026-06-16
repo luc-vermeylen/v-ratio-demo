@@ -9,11 +9,11 @@ This pipeline fits **v-ratio** using the **Flexible Confidence Boundary (FCB)** 
  
  *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
-The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using G-Square minimization. It natively supports multi-condition experimental designs and is optimized to run in batch mode on both local laptops and High-Performance Computing (HPC) clusters.
+The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using a G-Square cost function. It natively supports multi-condition experimental designs and is optimized to run in batch mode on both local laptops and High-Performance Computing (HPC) clusters.
 
 ---
 
-## ⚠️ Required Data Format
+## Required Data Format
 Before you begin, your dataset (CSV or RDS) **must** contain the following columns exactly as named:
 
 *   **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings).
@@ -26,7 +26,7 @@ Before you begin, your dataset (CSV or RDS) **must** contain the following colum
 
 ---
 
-## 📂 Core Files
+## Core Files
 
 *   **`fit_vratio_demo.R`**: The main configuration script. **This is the only file you need to edit.**
 *   **`run_batch_local.R`**: A handy script to automatically loop through all subjects and fit them on your local computer.
@@ -36,7 +36,7 @@ Before you begin, your dataset (CSV or RDS) **must** contain the following colum
 
 ---
 
-## 🛠️ Step-by-Step Workflow
+## Step-by-Step Workflow
 
 ### Step 1: Configure & Fit
 
@@ -84,17 +84,17 @@ If you fit multiple models (e.g., one where `v` varies by condition, and one whe
 
 Once you have selected your winning model, use `fit_stats.R` to analyze the actual parameters.
 
-*   **Global Parameters**: Generates boxplots of shared parameters against model boundaries to check for "boundary swarming" (e.g., ensuring `ter2` didn't crash into its lower limit).
-*   **Varying Parameters**: Generates Spaghetti plots and Group-Mean plots for any parameters you manipulated. Automatically runs RM-ANOVAs and calculates Effect Sizes (PES).
+*   **Global Parameters**: Generates boxplots of shared parameters against model boundaries to check for "boundary swarming" (e.g., ensuring parameters didn't crash into the parameter limits).
+*   **Varying Parameters**: Generates Spaghetti plots and Group-Mean plots for any parameters you manipulated. Automatically runs RM-ANOVAs or T-Tests and calculates Effect Sizes.
 
 ---
 
-## 📌 Important Notes
+## Important Notes
 
-*   **Time Scaling:** Ensure your `rt` and `rtconf` columns are in **SECONDS** (e.g., `0.450`, not `450`). The integration step is set to `dt = 0.001` to match seconds.
+*   **Time Scaling:** Ensure your `rt` and `rtconf` columns are in **SECONDS** (e.g., `0.450`, not `450`). The integration step is set to `dt = 0.001` to match RTs in seconds.
 *   **Subject IDs:** Ensure your `sub_id` column contains unique identifiers for the Repeated-Measures ANOVAs to work correctly in `fit_stats.R`.
 
-## 📦 Requirements
+## Requirements
 
 The following R packages are required. *(If running on the HPC, ensure your conda environment contains these).*
 
@@ -103,9 +103,9 @@ The following R packages are required. *(If running on the HPC, ensure your cond
 *   `dplyr`, `tidyr`, `data.table` (for data wrangling)
 *   `ggplot2`, `patchwork` (for plotting)
 
-## 🧮 The Mathematics of the Cost Function ($G^2$)
+## Details of the Cost Function ($G^2$)
 
-The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data, minimizing $G^2$ is mathematically equivalent to Maximum Likelihood Estimation (MLE).
+The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data (such as discretized RT distributions), minimizing $G^2$ is equivalent to Maximum Likelihood Estimation (MLE).
 
 The standard formula for $G^2$ is:
 
@@ -116,10 +116,18 @@ $$
 (Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).
 
 ### Evaluating the FCB Model (The 3 Targets)
-To capture both the primary decision and the confidence judgement, the pipeline mirrors the fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are all weighted equally:
+To capture both the primary decision and the confidence judgement, the pipeline mirrors the fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are weighted equally:
 
 1. **Target 1: Primary Decision RTs**
-   The pipeline calculates dynamic RT quantiles (e.g., 0.1, 0.3, 0.5, 0.7, 0.9) separately for Correct and Error trials (depending on how many trials there are). It calculates the $G^2$ difference between the observed and predicted probability mass in each of these primary decision bins.
+   The pipeline calculates dynamic RT quantiles separately for Correct and Error trials. To ensure robust parameter estimation even when certain conditions (or error rates) have very few trials, the pipeline automatically adjusts the binning resolution based on the exact sample size available in that specific cell:
+   * **$\ge$ 200 trials:** 10 bins (quantiles: 0.1, 0.2, ..., 0.9)
+   * **> 60 trials:** 6 bins (quantiles: 0.1, 0.3, 0.5, 0.7, 0.9)
+   * **> 30 trials:** 4 bins (quantiles: 0.3, 0.5, 0.7)
+   * **11 to 30 trials:** 2 bins (median split: 0.5)
+   * **$\le$ 10 trials (or zero variance):** The pipeline safely abandons RT shape fitting and evaluates the pure marginal probability mass of the cell (e.g., fitting the overall error rate without penalizing RT shape).
+   
+   It then calculates the $G^2$ difference between the observed and predicted probability mass in each of these primary decision bins.
+
 2. **Target 2: Confidence RTs**
    The pipeline performs the same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
 3. **Target 3: Pure Confidence Proportions**
