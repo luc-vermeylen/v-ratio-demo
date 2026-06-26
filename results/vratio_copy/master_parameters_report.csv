@@ -1,0 +1,2 @@
+"a","v","ter","a2","vratio","a2_slope_upper","a2_slope_lower","ter2","starting_point_confidence","a_slope","ntrials","s","dt","subject_id","fit_condition","file_id","cost","model","n_free_params","n_bins","n_obs","bic","aic"
+2.25865842156383,0.548808231269941,0.0839274387108162,6.29419164530581,2.8650757017529,0.555865133336185,1.19537357650697,-0.681391463661566,0.430425768299989,0,5000,1,0.001,"1","All","FCB_cj6_FIT_sub-1_20260626_154943.rds",2589.50840720168,"FCB_cj6",9,44,719,2648.70915942117,2607.50840720168

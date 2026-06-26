@@ -6,26 +6,34 @@
 # 1. Reconstructs marginal cell means from parameter betas.
 # 2. Plots Varying Parameters by conditions if present (Spaghetti & Group Means).
 # 3. Plots Global Parameters (i.e. not varying by condition).
-# 4. Performs RM-ANOVA for all parameters.
+# 4. Performs T-Test/RM-ANOVA for all parameters and saves reports.
 # ==============================================================================
 
+# ==============================================================================
+# 0. DIRECTORY SETUP
+# ==============================================================================
+# --- 1. SETTINGS ---
+OUTPUT_FOLDER   <- "vratio" 
+
+# Toggle to TRUE to see the red DEoptim bounds, or FALSE to zoom in on the data
+SHOW_BOUNDARIES <- FALSE     
+
+# Define derived parameters to calculate for every condition cell
+# Example: list(v2 = function(p) p$v1 * p$v_ratio)
+DERIVED_PARAMS <- list()
+
+library(here)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(data.table)
 library(patchwork)
-
-# --- 1. SETTINGS ---
-source("helper_functions.R") 
-RESULTS_DIR <- "test_vratio" # Change to your current results folder
-
-# Define derived parameters to calculate for every condition cell
-DERIVED_PARAMS <- list()
+source(here("helper_functions.R"))
 
 # ------------------------------------------------------------------------------
 # 2. DATA LOADING & RECONSTRUCTION
 # ------------------------------------------------------------------------------
-RESULTS_DIR <- file.path("results", RESULTS_DIR)
+RESULTS_DIR <- here("results", OUTPUT_FOLDER)
 files <- list.files(RESULTS_DIR, pattern = "\\.rds$", full.names = TRUE)
 valid_files <- c(); varying_info <- NULL; meta <- NULL
 
@@ -101,6 +109,7 @@ n_subs <- n_distinct(all_data_long$subject_id)
 
 for (p in params_to_analyze) {
   p_data <- all_data_long %>% filter(Parameter == p)
+  p_data$subject_id <- as.factor(p_data$subject_id) # Ensure factor for ANOVA
   
   # Detect design factors for this specific parameter
   p_mapping <- if(p %in% names(varying_info)) varying_info[[p]] else NULL
@@ -148,7 +157,7 @@ for (p in params_to_analyze) {
   # --- B. PLOTTING ---
   if (length(active_vars) > 0) {
     # --- VARYING PARAMETER PLOTS ---
-    x_var <- if("meta_bin" %in% active_vars) "meta_bin" else active_vars[1]
+    x_var <- active_vars[1]
     col_var <- if(length(active_vars) > 1) setdiff(active_vars, x_var)[1] else NULL
     
     p_data_summarised <- p_data %>% group_by(subject_id, across(all_of(active_vars))) %>% summarise(Value = mean(Value, na.rm=T), .groups = "drop")
@@ -169,8 +178,8 @@ for (p in params_to_analyze) {
     
     # Add Summary layers
     add_summary <- function(plt, mapping) {
-      plt + stat_summary(mapping, fun.data = mean_se, geom = "errorbar", width = 0.1, size = 1, color = "black", position = position_dodge(0.1)) +
-        stat_summary(mapping, fun = mean, geom = "line", size = 1.2, position = position_dodge(0.1)) +
+      plt + stat_summary(mapping, fun.data = mean_se, geom = "errorbar", width = 0.1, linewidth = 1, color = "black", position = position_dodge(0.1)) +
+        stat_summary(mapping, fun = mean, geom = "line", linewidth = 1.2, position = position_dodge(0.1)) +
         stat_summary(mapping, fun = mean, geom = "point", size = 4, position = position_dodge(0.1))
     }
     plots_spaghetti[[p]] <- add_summary(p_spag, g_aes)
@@ -179,13 +188,18 @@ for (p in params_to_analyze) {
   } else {
     # --- GLOBAL PARAMETER PLOTS ---
     p_data_unique <- p_data %>% distinct(subject_id, Value)
-    p_bounds <- if(p %in% names(model_bounds$lower)) c(model_bounds$lower[p], model_bounds$upper[p]) else NULL
+    
+    p_bounds <- NULL
+    if (SHOW_BOUNDARIES && p %in% names(model_bounds$lower)) {
+      p_bounds <- c(model_bounds$lower[p], model_bounds$upper[p])
+    }
+    
     plots_global[[p]] <- ggplot(p_data_unique, aes(x = "", y = Value)) +
       geom_boxplot(outlier.shape = NA, alpha = 0.3, width = 0.4) +
       geom_jitter(width = 0.15, alpha = 0.5, color = "firebrick") +
       {if(!is.null(p_bounds)) geom_hline(yintercept = p_bounds, linetype = "dashed", color = "red", alpha = 0.4)} +
       theme_classic() + 
-      labs(title = paste("Global:", p), x = NULL, y = NULL) +
+      labs(title = p, x = NULL, y = NULL) +
       theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
   }
 }
@@ -196,26 +210,47 @@ for (p in params_to_analyze) {
 n_v <- length(plots_spaghetti)
 grid_cols <- if(n_v == 4) 2 else ceiling(sqrt(n_v))
 
-# Plot 1: Global Parameters
+# Compile the plots into patchwork objects
+p_global <- NULL; p_spag <- NULL; p_avg <- NULL
+
 if(length(plots_global) > 0) {
-  print(wrap_plots(plots_global, ncol = 3) + 
-          plot_annotation(title = "Global Parameters and optimization boundaries"))
+  title_text <- if(SHOW_BOUNDARIES) "Global Parameters (and DEoptim Boundaries)" else "Global Parameters"
+  p_global <- wrap_plots(plots_global, ncol = 3) + plot_annotation(title = title_text)
 }
 
-# Plot 2: Spaghetti Plot
 if(n_v > 0) {
-  print(wrap_plots(plots_spaghetti, ncol = grid_cols, guides = "collect") + 
-          plot_annotation(title = "Individual Trends") & theme(legend.position = 'bottom'))
+  p_spag <- wrap_plots(plots_spaghetti, ncol = grid_cols, guides = "collect") + 
+    plot_annotation(title = "Individual Trends") & theme(legend.position = 'bottom')
   
-  # Plot 3: Group Means
-  print(wrap_plots(plots_average, ncol = grid_cols, guides = "collect") + 
-          plot_annotation(title = "Group Means") & theme(legend.position = 'bottom'))
+  p_avg <- wrap_plots(plots_average, ncol = grid_cols, guides = "collect") + 
+    plot_annotation(title = "Group Means") & theme(legend.position = 'bottom')
 }
 
-# Final Stats Table
+# --- A. SCREEN OUTPUT ---
+if (!is.null(p_global)) print(p_global)
+if (!is.null(p_spag)) print(p_spag)
+if (!is.null(p_avg)) print(p_avg)
+
+# --- B. PDF & CSV EXPORT ---
+pdf_path <- file.path(RESULTS_DIR, "parameter_statistics_report.pdf")
+pdf(file = pdf_path, width = 10, height = 7)
+if (!is.null(p_global)) print(p_global)
+if (!is.null(p_spag)) print(p_spag)
+if (!is.null(p_avg)) print(p_avg)
+dev.off()
+cat(sprintf("\nPlots saved to: %s\n", pdf_path))
+
 if (length(stats_results) > 0) {
   cat("\n=================================================================================\n")
   cat("STATISTICAL SUMMARY\n")
   cat("=================================================================================\n")
-  print(as.data.frame(bind_rows(stats_results) %>% mutate(sig = case_when(p < .001 ~ "***", p < .01 ~ "**", p < .05 ~ "*", p < .1 ~ ".", TRUE ~ "ns"))), row.names = FALSE)
+  
+  stats_df <- bind_rows(stats_results) %>% 
+    mutate(sig = case_when(p < .001 ~ "***", p < .01 ~ "**", p < .05 ~ "*", p < .1 ~ ".", TRUE ~ "ns"))
+  
+  print(as.data.frame(stats_df), row.names = FALSE)
+  
+  csv_path <- file.path(RESULTS_DIR, "parameter_anova_results.csv")
+  write.csv(stats_df, csv_path, row.names = FALSE)
+  cat(sprintf("Stats saved to: %s\n", csv_path))
 }

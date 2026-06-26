@@ -7,21 +7,26 @@
 # 2. Generates behavioral diagnostic plots (RT Distributions, Confidence Rating Mass).
 # 3. Produces summary CSVs
 # ==============================================================================
+
+# ==============================================================================
+# 0. DIRECTORY SETUP
+# ==============================================================================
+
+OUTPUT_FOLDER <- "vratio" # specify the directory with your fit results here
+
+library(here)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(data.table)
 library(patchwork)
-source("helper_functions.R")
-
-# --- SETTINGS ---
-RESULTS_DIR <- "test_vratio" 
-SAVE_CSV    <- TRUE    
+source(here("helper_functions.R"))
 
 # ------------------------------------------------------------------------------
 # 1. DATA AGGREGATION 
 # ------------------------------------------------------------------------------
-RESULTS_DIR <- file.path("results", RESULTS_DIR)
+SAVE_CSV <- TRUE    
+RESULTS_DIR <- here("results", OUTPUT_FOLDER)
 files <- list.files(RESULTS_DIR, pattern = "\\.rds$", full.names = TRUE)
 if (length(files) == 0) stop("No RDS files found in: ", RESULTS_DIR)
 
@@ -31,21 +36,21 @@ cat("Aggregating data from", length(files), "files...\n")
 
 for (f in files) {
   fit <- tryCatch(readRDS(f), error = function(e) NULL)
-
+  
   if (is.null(fit) || !is.list(fit) || !"info" %in% names(fit)) {
     next
   }
   
   sub_id   <- as.character(fit$info$subject)
   fit_cond <- if(!is.null(fit$info$condition)) as.character(fit$info$condition) else "All"
-  fname   <- basename(f)
+  fname    <- basename(f)
   
   try({
     # A. Trial data
     obs_list[[f]]  <- as.data.table(fit$observations)[, `:=`(subject_id = sub_id, fit_condition = fit_cond, file_id = fname)]
     pred_list[[f]] <- as.data.table(fit$predictions)[, `:=`(subject_id = sub_id, fit_condition = fit_cond, file_id = fname)]
     
-    # B. Parameters (using best_params which are already translated to cell-means in template)
+    # B. Parameters
     full_p <- c(fit$best_params, unlist(fit$constants))
     param_list[[f]] <- as.data.frame(t(full_p)) %>% 
       mutate(subject_id = sub_id, fit_condition = fit_cond, file_id = fname, cost = fit$fit_metrics$best_cost)
@@ -80,15 +85,13 @@ all_pred <- rbindlist(pred_list)[file_id %in% master_table$file_id]
 # ------------------------------------------------------------------------------
 # 2. DESIGN DETECTION
 # ------------------------------------------------------------------------------
-meta <- readRDS(file.path(RESULTS_DIR, master_table$file_id[1])) 
+meta <- readRDS(here("results", OUTPUT_FOLDER, master_table$file_id[1])) 
 varying_info <- meta$info$varying_params
 
 is_regression <- any(sapply(varying_info, function(x) inherits(x, "formula")))
 cond_cols <- if(length(varying_info) > 0) {
   if(is_regression) unique(unlist(lapply(varying_info, all.vars))) else unique(unlist(varying_info))
 } else { NULL }
-
-has_conflict <- "congruency" %in% names(all_obs)
 
 # Create interaction column for plotting and effects
 if (!is.null(cond_cols)) {
@@ -100,12 +103,11 @@ if (!is.null(cond_cols)) {
   all_obs[, interaction_col := "Overall"]; all_pred[, interaction_col := "Overall"]; lvls <- "Overall"
 }
 
+plot_lvls <- unique(c("Overall", lvls))
+
 # ------------------------------------------------------------------------------
 # 3. MASTER FIT PLOTS
 # ------------------------------------------------------------------------------
-cat("Generating grand-average fit plots...\n")
-
-# Helper function so we can easily draw everything to Screen AND PDF
 draw_all_distributions <- function() {
   for (l in plot_lvls) {
     d_o <- if(l=="Overall") all_obs else all_obs[interaction_col == l]
@@ -134,6 +136,8 @@ draw_all_distributions <- function() {
   }
 }
 
+cat("Generating grand-average fit plots...\n")
+
 # --- A. SCREEN OUTPUT ---
 draw_all_distributions()
 
@@ -141,7 +145,6 @@ draw_all_distributions()
 pdf_path <- file.path(RESULTS_DIR, "grand_average_fit_assessment.pdf")
 pdf(file = pdf_path, width = 10, height = 6)
 
-draw_resolution_barplot()    # Put barplot in PDF
 draw_all_distributions()     # Put all distributions in PDF
 
 dev.off()
@@ -157,8 +160,7 @@ if(SAVE_CSV) {
   
   write.csv(master_table, file.path(RESULTS_DIR, "master_parameters_report.csv"), row.names=F)
   write.csv(metrics_report, file.path(RESULTS_DIR, "fit_metrics_summary.csv"), row.names=F)
-  write.csv(master_table, file.path(RESULTS_DIR, "aggregated_results.csv"), row.names=F)
-  
+
   cat("\nResults aggregated and reports saved to:", RESULTS_DIR, "\n")
 }
 

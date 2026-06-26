@@ -2,18 +2,23 @@
 # fit_compare.R: Model Comparison
 # Author: Luc Vermeylen
 # ==============================================================================
+
+# ==============================================================================
+# 0. DIRECTORY SETUP
+# ==============================================================================
+
+# Define which model folders you want to compare. 
+# They must be located inside the "results/" directory.
+# Set to "ALL" to automatically compare every folder present in the results directory.
+
+FOLDERS_TO_COMPARE <- c("vratio", "vratio_copy") 
+# Example for specific folders: c("test_vratio_1", "test_vratio_2")
+
+library(here)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(patchwork)
-
-# --- 1. SETTINGS ---
-# Define which model folders you want to compare. 
-# They must be located inside the "results/" directory.
-# Set to "ALL" to automatically compare every folder in the results directory.
-
-FOLDERS_TO_COMPARE <- "ALL" 
-# Example for specific folders: c("test_vratio_1", "test_vratio_2")
 
 # ------------------------------------------------------------------------------
 # 2. DATA LOADING & CLEANING
@@ -22,17 +27,19 @@ cat("Loading model data...\n")
 
 # Auto-detect or use specified folders
 if (length(FOLDERS_TO_COMPARE) == 1 && FOLDERS_TO_COMPARE == "ALL") {
-  model_folders <- list.dirs("results", full.names = TRUE, recursive = FALSE)
+  model_folders <- list.dirs(here("results"), full.names = TRUE, recursive = FALSE)
 } else {
-  model_folders <- file.path("results", FOLDERS_TO_COMPARE)
+  model_folders <- here("results", FOLDERS_TO_COMPARE)
 }
 
 if (length(model_folders) < 2) {
   stop("You need at least 2 model folders to run a comparison!")
 }
 
-# Clean up labels for plotting (remove "results/" from the name)
+# Clean up labels for plotting (remove path details from the name)
 model_labels <- basename(model_folders)
+
+CSV_NAME <- "fit_metrics_summary.csv" 
 
 all_model_data <- list()
 
@@ -129,7 +136,18 @@ p3 <- ggplot(subject_selection %>% filter(delta_bic < 1e6), aes(x = reorder(mode
   theme_minimal() + labs(title = "Evidence Gap (dBIC)", x = "Model", y = "dBIC from Winner") +
   theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 
-print((p1 | p2) / p3)
+# Compile plot
+final_plot <- (p1 | p2) / p3
+
+# Print to screen
+print(final_plot)
+
+# Save to PDF
+pdf_path <- here("results", "model_comparison_plots.pdf")
+pdf(file = pdf_path, width = 10, height = 7)
+print(final_plot)
+dev.off()
+cat(sprintf("\nPlots saved to: %s\n", pdf_path))
 
 # ------------------------------------------------------------------------------
 # 5. FINAL REPORTING
@@ -156,3 +174,7 @@ if (length(unique_bin_avgs) > 1) {
 }
 
 cat("============================================================================================\n")
+
+csv_path <- here("results", "summary_model_comparison_detailed.csv")
+write.csv(group_summary, csv_path, row.names = FALSE)
+cat(sprintf("Summary table saved to: %s\n", csv_path))

@@ -1147,6 +1147,7 @@ plot_dist <- function(obs, pred = NULL,
   
   # 4. Helper: Density Calculation
   get_dens <- function(vals, base_n, flip=FALSE) {
+    vals <- vals[!is.na(vals)]
     if (length(vals) < 2) return(list(x=numeric(0), y=numeric(0)))
     d <- density(vals, from = 0, to = max_val, n = 512)
     d$y <- d$y * (length(vals) / base_n)
