@@ -1,9 +1,3 @@
----
-
-editor_options: 
-  markdown: 
-    wrap: sentence
----
 
 ------------------------------------------------------------------------
 
@@ -17,13 +11,13 @@ This pipeline fits the **Flexible Confidence Boundary (FCB)** models described i
 
 > *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
 
-To help users get started, **we have included the original datasets from Herregods et al. (2025)** in the `data/` folder.
+To help you get started, **we have included the original datasets from Herregods et al. (2025)** in the `data/` folder.
 
 ------------------------------------------------------------------------
 
 ## Repository Overview
 
-- 📁 **`data/`**: Place your dataset (CSV or RDS) here.
+- 📁 **`data/`**: Place your dataset (.csv or .RDS) here.
 - 📁 **`results/`**: Model fits, CSV summaries, and PDF plots will appear here.
 - 📁 **`R/`** and 📁 **`hpc/`**: Backend C++ engine, R helper functions, and Slurm scripts. *(Do not edit these).*
 - 📄 **`1_run_pipeline.R`**: The main file. Configure settings and launch fits here.
@@ -35,7 +29,15 @@ To help users get started, **we have included the original datasets from Herrego
 
 ## Required Data Format
 
-Your dataset **must** contain the following columns exactly as named: \* **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings). \* **`rt`**: Primary decision reaction time (**strictly in seconds**, e.g., `0.450`). \* **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct). \* **`rtconf`**: Confidence reaction time (**strictly in seconds**). \* **`cj`**: Confidence judgment rating. \* If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). \* If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
+Your dataset **must** contain the following columns exactly as named: 
+
+* **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings).
+* **`rt`**: Primary decision reaction time (**strictly in seconds**, e.g., `0.450`). 
+* **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct). 
+* **`rtconf`**: Confidence reaction time (**strictly in seconds**). 
+* **`cj`**: Confidence judgment rating. 
+* If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). 
+* If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
 
 ------------------------------------------------------------------------
 
