@@ -82,7 +82,7 @@ Once you have selected your winning model, this script automatically extracts an
 
 ## The FCB Model Parameters Dictionary
 
-The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions).
+The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions). Parameter boundaries can be changed in R/helper_functions.R, in the model_params list.
 
 | Parameter | Stage | Description |
 |:-----------------------|:-----------------------|:-----------------------|
