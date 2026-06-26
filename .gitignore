@@ -9,8 +9,6 @@
 *.Rproj
 
 # --- Large Data & HPC results ---
-*.rds
-*.pdf
 slurm_oe/
 
 # --- Compiled C++ code ---
