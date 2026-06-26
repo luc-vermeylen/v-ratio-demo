@@ -1,139 +1,107 @@
+---
+
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+------------------------------------------------------------------------
 
 # V-Ratio Fitting Pipeline (FCB Model)
 
-A plug-and-play computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**). 
+A computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**).
 
-This pipeline fits **v-ratio** using the **Flexible Confidence Boundary (FCB)** models described in:
+This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in: \> *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
- *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
- 
- *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
+> *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
 
-The pipeline uses differential evolution (`DEoptim`) to fit the joint distributions of primary choices, reaction times, confidence judgments, and confidence reaction times using a G-Square cost function. It natively supports multi-condition experimental designs and is optimized to run in batch mode on both local laptops and High-Performance Computing (HPC) clusters.
+To help users get started, **we have included the original datasets from Herregods et al. (2025)** in the `data/` folder.
 
----
+------------------------------------------------------------------------
 
-## Required Data Format
-Before you begin, your dataset (CSV or RDS) **must** contain the following columns exactly as named:
+## 📂 Repository Overview
 
-*   **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings).
-*   **`rt`**: Primary decision reaction time (**in seconds**).
-*   **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct).
-*   **`rtconf`**: Confidence reaction time (**in seconds**).
-*   **`cj`**: Confidence judgment rating. 
-    * If using binary confidence, this must be coded as `0` (Low) and `1` (High).
-    * If using a 6-point scale, this must be coded as `1` through `6`.
+- 📁 **`data/`**: Place your dataset (CSV or RDS) here.
+- 📁 **`results/`**: Model fits, CSV summaries, and PDF plots will appear here.
+- 📁 **`R/`** and 📁 **`hpc/`**: Backend C++ engine, R helper functions, and Slurm scripts. *(Do not edit these).*
+- 📄 **`1_run_pipeline.R`**: The main file. Configure settings and launch fits here.
+- 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
+- 📄 **`3_fit_compare.R`**: Compares different models to find the best fit via BIC.
+- 📄 **`4_fit_stats.R`**: Runs statistics (T-Tests, ANOVAs) and generates parameter plots.
 
----
+------------------------------------------------------------------------
 
-## Core Files
+## ⚠️ Required Data Format
 
-*   **`fit_vratio_demo.R`**: The main configuration script. **This is the only file you need to edit.**
-*   **`run_batch_local.R`**: A handy script to automatically loop through all subjects and fit them on your local computer.
-*   **`batch_fit.slurm`**: Submission script for running massive parallel fits on an HPC cluster (optimized for the KU Leuven HPC)
-*   **Post-Fit Analysis scripts**: `fit_assess.R`, `fit_compare.R`, and `fit_stats.R`.
-*   *Backend Files (Do not touch)*: `models.cpp` (C++ engine) and `helper_functions.R` (core R logic).
+Your dataset **must** contain the following columns exactly as named: \* **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings). \* **`rt`**: Primary decision reaction time (**strictly in seconds**, e.g., `0.450`). \* **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct). \* **`rtconf`**: Confidence reaction time (**strictly in seconds**). \* **`cj`**: Confidence judgment rating. \* If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). \* If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
 
----
+------------------------------------------------------------------------
 
-## Step-by-Step Workflow
+## 🛠️ Step-by-Step Workflow
 
-### Step 1: Configure & Fit
+### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
-Open **`fit_vratio_demo.R`** and adjust the **USER SETTINGS**:
+Open this file and adjust the User Settings. You will specify your dataset, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), and which parameters vary by experimental conditions.
 
-*   **`OUTPUT_FOLDER`**: Give your model a unique folder name (e.g., `"vratio_baseline"` or `"vratio_by_emotion"`).
-*   **`DATA_NAME`**: The name of your dataset inside the `data/` folder.
-*   **`MODEL_NAME`**: Choose `"FCB_cj2"` (binary confidence) or `"FCB_cj6"` (6-point scale).
-*   **`VARYING_PARAMS`**: Define if parameters change between experimental conditions using R formulas. 
-    * *Example:* `list(v = ~ as.factor(Difficulty))` will estimate a separate drift rate for each difficulty level. The pipeline will automatically split your data and likelihood blocks safely!
+**How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. \* `list()`: (Empty list). Fits one global parameter per subject. \* `list(v = ~ as.factor(Difficulty))`: Estimates a separate Drift Rate for each level of "Difficulty". \* `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`: Fits a full interaction for the v-ratio parameter.
 
-**To Run the Fits:**
+**How to execute:** Change the `RUN_MODE` variable to choose how to run the pipeline: \* `"single"`: Runs a test fit on 1 subject so you can check for errors. \* `"local_batch"`: Automatically loops through all subjects and fits them on your computer. \* `"hpc"`: Saves your configuration and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
 
-*   **Locally (Laptop):** Open `run_batch_local.R` and source it. It will safely loop through every subject in your dataset.
-*   **On the HPC:** Navigate to the folder in your terminal and submit the `batch_fit.slurm` using sbatch:
+> **What is saved?** For each subject, a `.rds` file is saved in `results/`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation.
 
-```bash
-sbatch --job-name=vratio --array=1-50 --export=NONE,R_SCRIPT=fit_vratio_demo.R batch_fit.slurm
-```
+### Step 2: Visual Assessment (`2_fit_assess.R`)
 
-More information on how to use this on the HPC is included in the `batch_fit.slurm` file.
+**⚠️ You MUST run this script before comparing models or running statistics!** This script reads all the `.rds` files, aggregates them into a lightweight CSV, and evaluates if the model actually captured human behavior.
 
-### Step 2: Visual Assessment (`fit_assess.R`)
+**Outputs:** 1. **`fit_metrics_summary.csv`**: A spreadsheet of BICs and parameters. 2. **`grand_average_fit_assessment.pdf`**: A visual report containing: \* *Decision RT Distributions:* A mirrored density plot of observed vs predicted RTs. \* *Confidence RT Distributions:* The speed of the confidence judgment. \* *Confidence Rating Mass:* A barplot showing if the model predicted the exact empirical frequencies of ratings (e.g., 1-6).
 
-**⚠️ You MUST run this script before comparing models or running statistics!**
+### Step 3: Model Comparison (`3_fit_compare.R`)
 
-Open `fit_assess.R`, set `RESULTS_DIR` to your output folder, and run it.
+If you fit multiple models to test competing hypotheses (e.g., one folder where `v` varies, and another where `vratio` varies), this script ranks them. Open it and list your result folders in `FOLDERS_TO_COMPARE`.
 
-*   It aggregates all the heavy individual `.rds` fit files into a lightweight master dataset.
-*   It generates a PDF report containing:
-    1. Decision RT distributions.
-    2. Confidence RT distributions.
-    3. Confidence mass distributions.
-*   It saves `fit_metrics_summary.csv` (which is strictly required for Step 3).
+**Outputs:** \* `model_comparison_plots.pdf`: Shows boxplots of BICs, Subject "Wins", and the Evidence Gap (delta-BIC). \* `summary_model_comparison_detailed.csv`: A table ranking models by overall BIC, Akaike Weights, and penalizations.
 
-### Step 3: Model Comparison (`fit_compare.R`)
+### Step 4: Parameter Statistics (`4_fit_stats.R`)
 
-If you fit multiple models (e.g., one where `v` varies by condition, and one where `vratio` varies by condition), this script will tell you which one fits the data best.
+Once you have selected your winning model, this script automatically extracts and analyzes the estimated parameters.
 
-*   Open `fit_compare.R` and list the folders you want to compare in `FOLDERS_TO_COMPARE`.
-*   It reads the CSVs generated in Step 2 and ranks the models using **BIC** and **BIC Weights**.
-*   It outputs a visual comparison plot and a detailed summary table.
+**Outputs:** \* **Global Parameters Plot**: Generates boxplots of shared parameters against the theoretical optimization boundaries. This is crucial for checking for "boundary swarming" (ensuring the optimizer didn't get trapped against a limit). \* **Individual Trends & Group Means**: Generates Spaghetti plots and summary plots for any parameters you manipulated experimentally. \* **`parameter_anova_results.csv`**: Automatically runs T-Tests or Repeated-Measures ANOVAs on your varying parameters and saves the F-values, p-values, and Partial Eta Squared (PES) effect sizes.
 
-### Step 4: Parameter Statistics (`fit_stats.R`)
+------------------------------------------------------------------------
 
-Once you have selected your winning model, use `fit_stats.R` to analyze the actual parameters.
+## 📖 The FCB Model Parameters Dictionary
 
-*   **Global Parameters**: Generates boxplots of shared parameters against model boundaries to check for "boundary swarming" (e.g., ensuring parameters didn't crash into the parameter limits).
-*   **Varying Parameters**: Generates Spaghetti plots and Group-Mean plots for any parameters you manipulated. Automatically runs RM-ANOVAs or T-Tests and calculates Effect Sizes.
+The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions).
 
----
+| Parameter | Stage | Description |
+|:-----------------------|:-----------------------|:-----------------------|
+| **`a`** | Primary | **Decision Boundary**: The total evidence required to make the primary choice. |
+| **`v`** | Primary | **Drift Rate**: The speed of information accumulation for the primary choice. |
+| **`ter`** | Primary | **Non-Decision Time**: Encoding and motor execution time (seconds). |
+| **`a2`** | Confidence | **Confidence Boundary**: The total evidence space for the confidence judgment. |
+| **`vratio`** | Confidence | **V-Ratio**: The ratio of post-decisional drift to primary drift ($v_{post} = v \times vratio$). If an error is made, $v_{post}$ is automatically reversed (multiplied by -1) in the C++ code to drive confidence downwards. |
+| **`a2_slope_upper`** | Confidence | **Upper Bound Collapse**: How fast the upper confidence boundary collapses. |
+| **`a2_slope_lower`** | Confidence | **Lower Bound Collapse**: How fast the lower confidence boundary collapses. |
+| **`ter2`** | Confidence | **Confidence Non-Decision Time**: Delay specific to confidence reporting. Can be negative, implying metacognitive processing starts during the primary motor execution. |
+| **`starting_point_confidence`** | Confidence | **Starting Point**: The fraction of `a2` where confidence accumulation begins (between 0 and 1). |
 
-## Important Notes
+------------------------------------------------------------------------
 
-*   **Time Scaling:** Ensure your `rt` and `rtconf` columns are in **SECONDS** (e.g., `0.450`, not `450`). The integration step is set to `dt = 0.001` to match RTs in seconds.
-*   **Subject IDs:** Ensure your `sub_id` column contains unique identifiers for the Repeated-Measures ANOVAs to work correctly in `fit_stats.R`.
+## 🧮 Details of the Cost Function ($G^2$)
 
-## Requirements
+The pipeline uses R's `DEoptim` package to optimize parameters, calling a fast C++ simulation engine to generate predictions. It minimizes the **Likelihood Ratio Chi-Square statistic (**$G^2$). For binned multinomial data, minimizing $G^2$ is mathematically equivalent to Maximum Likelihood Estimation (MLE).
 
-The following R packages are required. *(If running on the HPC, ensure your conda environment contains these).*
-
-*   `Rcpp`, `RcppZiggurat` (for the C++ simulation engine)
-*   `DEoptim` (for global parameter optimization)
-*   `dplyr`, `tidyr`, `data.table` (for data wrangling)
-*   `ggplot2`, `patchwork` (for plotting)
-
-## Details of the Cost Function ($G^2$)
-
-The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data (such as discretized RT distributions), minimizing $G^2$ is equivalent to Maximum Likelihood Estimation (MLE).
-
-The standard formula for $G^2$ is:
-
-$$
-G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)
-$$
-
-(Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).
+$$G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)$$
+*(Where* $N$ is the number of trials, $o_i$ is the observed probability mass, and $p_i$ is the predicted probability mass).
 
 ### Evaluating the FCB Model (The 3 Targets)
-To capture both the primary decision and the confidence judgement, the pipeline mirrors the fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are weighted equally:
 
-1. **Target 1: Primary Decision RTs**
-   The pipeline calculates dynamic RT quantiles separately for Correct and Error trials. To ensure robust parameter estimation even when certain conditions (or error rates) have very few trials, the pipeline automatically adjusts the binning resolution based on the exact sample size available in that specific cell:
-   * **$\ge$ 200 trials:** 10 bins (quantiles: 0.1, 0.2, ..., 0.9)
-   * **> 60 trials:** 6 bins (quantiles: 0.1, 0.3, 0.5, 0.7, 0.9)
-   * **> 30 trials:** 4 bins (quantiles: 0.3, 0.5, 0.7)
-   * **11 to 30 trials:** 2 bins (median split: 0.5)
-   * **$\le$ 10 trials (or zero variance):** The pipeline safely abandons RT shape fitting and evaluates the pure marginal probability mass of the cell (e.g., fitting the overall error rate without penalizing RT shape).
-   
-   It then calculates the $G^2$ difference between the observed and predicted probability mass over these primary decision bins.
+To capture both stages, the pipeline calculates a joint cost function across three empirical targets. Following Herregods et al. (2025), all three targets are weighted equally (Weight = 1.0):
 
-2. **Target 2: Confidence RTs**
-   The pipeline performs the same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
-3. **Target 3: Pure Confidence Proportions**
-   Instead of looking at time, this target evaluates the raw choices. It calculates the proportion of trials falling into each confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
+1.  **Target 1: Primary Decision RTs** The pipeline calculates dynamic RT quantiles separately for Correct and Error trials. To ensure robust parameter estimation even when conditions have very few trials, the pipeline automatically adjusts the binning resolution based on the exact sample size in that cell (ranging from 10 bins for \>200 trials, down to 2 bins for $\le$ 30 trials). *If a cell has* $\le$ 10 trials or zero variance, the pipeline safely abandons RT shape fitting and fits the pure marginal probability mass instead.
+2.  **Target 2: Confidence RTs** The pipeline performs the exact same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
+3.  **Target 3: Pure Confidence Proportions** This target evaluates raw choices instead of time. It calculates the proportion of trials falling into each specific confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
 
-### Independent Likelihood Blocks for Multiple Conditions
-If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. 
+### Independent Likelihood Blocks
 
----
+If you map parameters to experimental conditions, the pipeline does not lump all data into one giant distribution. Instead, it splits the data into **Independent Likelihood Blocks**. The $G^2$ cost is calculated for each condition independently (where probability mass sums to 1.0 locally), and then summed. This prevents **Parameter Mimicry**, ensuring that massive global RT shifts do not wash out subtle, condition-specific parameter effects.
