@@ -11,7 +11,9 @@ editor_options:
 
 A computational modeling pipeline for estimating metacognitive efficiency (**v-ratio**).
 
-This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in: \> *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
+This pipeline fits the **Flexible Confidence Boundary (FCB)** models described in: 
+
+> *Herregods, S., Le Denmat, P., Vermeylen, L., & Desender, K. (2025). Modeling speed–accuracy trade-offs in the stopping rule for confidence judgments. Psychological Review.*
 
 > *Desender, K., Vermeylen, L., & Verguts, T. (2022). Dynamic influences on static measures of metacognition. Nature communications, 13(1), 4208.*
 
@@ -19,7 +21,7 @@ To help users get started, **we have included the original datasets from Herrego
 
 ------------------------------------------------------------------------
 
-## 📂 Repository Overview
+## Repository Overview
 
 - 📁 **`data/`**: Place your dataset (CSV or RDS) here.
 - 📁 **`results/`**: Model fits, CSV summaries, and PDF plots will appear here.
@@ -31,13 +33,13 @@ To help users get started, **we have included the original datasets from Herrego
 
 ------------------------------------------------------------------------
 
-## ⚠️ Required Data Format
+## Required Data Format
 
 Your dataset **must** contain the following columns exactly as named: \* **`sub_id`**: The subject identifier (or change `SUBJECT_COL` in the settings). \* **`rt`**: Primary decision reaction time (**strictly in seconds**, e.g., `0.450`). \* **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct). \* **`rtconf`**: Confidence reaction time (**strictly in seconds**). \* **`cj`**: Confidence judgment rating. \* If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). \* If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
 
 ------------------------------------------------------------------------
 
-## 🛠️ Step-by-Step Workflow
+## Step-by-Step Workflow
 
 ### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
@@ -69,7 +71,7 @@ Once you have selected your winning model, this script automatically extracts an
 
 ------------------------------------------------------------------------
 
-## 📖 The FCB Model Parameters Dictionary
+## The FCB Model Parameters Dictionary
 
 The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions).
 
@@ -87,21 +89,35 @@ The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by d
 
 ------------------------------------------------------------------------
 
-## 🧮 Details of the Cost Function ($G^2$)
+## Details of the Cost Function ($G^2$)
 
-The pipeline uses R's `DEoptim` package to optimize parameters, calling a fast C++ simulation engine to generate predictions. It minimizes the **Likelihood Ratio Chi-Square statistic (**$G^2$). For binned multinomial data, minimizing $G^2$ is mathematically equivalent to Maximum Likelihood Estimation (MLE).
+The pipeline minimizes the **Likelihood Ratio Chi-Square statistic ($G^2$)**. For categorical and binned multinomial data (such as discretized RT distributions), minimizing $G^2$ is equivalent to Maximum Likelihood Estimation (MLE).
 
-$$G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)$$
-*(Where* $N$ is the number of trials, $o_i$ is the observed probability mass, and $p_i$ is the predicted probability mass).
+The standard formula for $G^2$ is:
+
+$$
+G^2 = 2 \times N \sum_{i=1}^{k} o_i \times \ln\left(\frac{o_i}{p_i}\right)
+$$
+
+(Where $N$ is the number of trials, $o_i$ is the observed probability mass in a specific bin, and $p_i$ is the predicted probability mass simulated by the model).
 
 ### Evaluating the FCB Model (The 3 Targets)
+To capture both the primary decision and the confidence judgement, the pipeline mirrors the fitting architecture introduced in **Herregods et al. (2025)**. It calculates a joint cost function across three specific targets, which are weighted equally:
 
-To capture both stages, the pipeline calculates a joint cost function across three empirical targets. Following Herregods et al. (2025), all three targets are weighted equally (Weight = 1.0):
+1. **Target 1: Primary Decision RTs**
+   The pipeline calculates dynamic RT quantiles separately for Correct and Error trials. To ensure robust parameter estimation even when certain conditions (or error rates) have very few trials, the pipeline automatically adjusts the binning resolution based on the exact sample size available in that specific cell:
+   * **$\ge$ 200 trials:** 10 bins (quantiles: 0.1, 0.2, ..., 0.9)
+   * **> 60 trials:** 6 bins (quantiles: 0.1, 0.3, 0.5, 0.7, 0.9)
+   * **> 30 trials:** 4 bins (quantiles: 0.3, 0.5, 0.7)
+   * **11 to 30 trials:** 2 bins (median split: 0.5)
+   * **$\le$ 10 trials (or zero variance):** The pipeline safely abandons RT shape fitting and evaluates the pure marginal probability mass of the cell (e.g., fitting the overall error rate without penalizing RT shape).
+   
+   It then calculates the $G^2$ difference between the observed and predicted probability mass over these primary decision bins.
 
-1.  **Target 1: Primary Decision RTs** The pipeline calculates dynamic RT quantiles separately for Correct and Error trials. To ensure robust parameter estimation even when conditions have very few trials, the pipeline automatically adjusts the binning resolution based on the exact sample size in that cell (ranging from 10 bins for \>200 trials, down to 2 bins for $\le$ 30 trials). *If a cell has* $\le$ 10 trials or zero variance, the pipeline safely abandons RT shape fitting and fits the pure marginal probability mass instead.
-2.  **Target 2: Confidence RTs** The pipeline performs the exact same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
-3.  **Target 3: Pure Confidence Proportions** This target evaluates raw choices instead of time. It calculates the proportion of trials falling into each specific confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
+2. **Target 2: Confidence RTs**
+   The pipeline performs the same dynamic RT quantile binning for the Confidence Reaction Times (`rtconf`), again evaluated separately for correct and error trials.
+3. **Target 3: Pure Confidence Proportions**
+   Instead of looking at time, this target evaluates the raw choices. It calculates the proportion of trials falling into each confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
 
-### Independent Likelihood Blocks
-
-If you map parameters to experimental conditions, the pipeline does not lump all data into one giant distribution. Instead, it splits the data into **Independent Likelihood Blocks**. The $G^2$ cost is calculated for each condition independently (where probability mass sums to 1.0 locally), and then summed. This prevents **Parameter Mimicry**, ensuring that massive global RT shifts do not wash out subtle, condition-specific parameter effects.
+### Independent Likelihood Blocks for Multiple Conditions
+If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. 
