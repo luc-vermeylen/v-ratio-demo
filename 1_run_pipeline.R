@@ -43,7 +43,7 @@ library(here)
 OUTPUT_DIR  <- here("results", OUTPUT_FOLDER)
 CONFIG_PATH <- here("results", OUTPUT_FOLDER, "config.RData")
 DATA_FILE   <- here("data", DATA_NAME)
-ENGINE_FILE <- here("fit.R")
+ENGINE_FILE <- here("R","fit.R")
 
 # Create results folder and save config
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
@@ -89,7 +89,7 @@ if (RUN_MODE == "single") {
   cat("\n=== HPC PREPARATION COMPLETE ===\n")
   cat(sprintf("1. Your settings are safely saved in:\n   %s\n", CONFIG_PATH))
   cat("2. To run this on the HPC cluster, simply copy and paste this command into your terminal:\n\n")
-  cat(sprintf("sbatch --job-name=vratio --array=1-%d --export=NONE,R_SCRIPT=fit.R,CONFIG_PATH=%s batch_fit.slurm\n\n", n_subjects, CONFIG_REL))
+  cat(sprintf("sbatch --job-name=vratio --array=1-%d --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=%s batch_fit.slurm\n\n", n_subjects, CONFIG_REL))
   
 } else {
   stop("Invalid RUN_MODE! Choose 'single', 'local_batch', 'group', or 'hpc'.")

@@ -28,7 +28,7 @@ library(tidyr)
 library(ggplot2)
 library(data.table)
 library(patchwork)
-source(here("helper_functions.R"))
+source(here("R", "helper_functions.R"))
 
 # ------------------------------------------------------------------------------
 # 2. DATA LOADING & RECONSTRUCTION

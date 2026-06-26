@@ -5,7 +5,7 @@
 # Description: 
 # 1. Aggregates fitted model results (.rds) from a given directory.
 # 2. Generates behavioral diagnostic plots (RT Distributions, Confidence Rating Mass).
-# 3. Produces summary CSVs
+# 3. Produces summary CSVs necessary for fit_stats.R and fit_compare.R
 # ==============================================================================
 
 # ==============================================================================
@@ -20,7 +20,7 @@ library(tidyr)
 library(ggplot2)
 library(data.table)
 library(patchwork)
-source(here("helper_functions.R"))
+source(here("R", "helper_functions.R"))
 
 # ------------------------------------------------------------------------------
 # 1. DATA AGGREGATION 

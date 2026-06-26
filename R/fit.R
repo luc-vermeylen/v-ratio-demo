@@ -7,8 +7,8 @@ Sys.setenv(LC_ALL = "C")
 Sys.setenv(LANG = "C")
 suppressPackageStartupMessages({
   library(Rcpp); library(DEoptim); library(dplyr); library(RcppZiggurat); library(data.table); library(here)
-  source(here("helper_functions.R"))
-  sourceCpp(here("models.cpp"))
+  source(here("R", "helper_functions.R"))
+  sourceCpp(here("R", "models.cpp"))
 })
 
 # ==============================================================================

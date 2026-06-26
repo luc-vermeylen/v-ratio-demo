@@ -17,8 +17,9 @@ slurm_oe/
 *.dll
 *.exe
 
-# --- macOS junk ---
+# --- macOS junk and other ---
 .DS_Store
+Thumbs.db
 
 # --- R Markdown / Knitr ---
 *_cache/
@@ -26,3 +27,4 @@ slurm_oe/
 *.utf8.md
 *.knit.md
 .positai
+Rplots.pdf
