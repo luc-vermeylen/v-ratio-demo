@@ -35,9 +35,7 @@ Your dataset **must** contain the following columns exactly as named:
 * **`rt`**: Primary decision reaction time (**strictly in seconds**, e.g., `0.450`). 
 * **`acc`**: Primary decision accuracy (`0` = Error, `1` = Correct). 
 * **`rtconf`**: Confidence reaction time (**strictly in seconds**). 
-* **`cj`**: Confidence judgment rating. 
-* If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). 
-* If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
+* **`cj`**: Confidence judgment rating. If using binary confidence (`FCB_cj2`), code this as `0` (Low) and `1` (High). If using a 6-point scale (`FCB_cj6`), code this as `1` through `6`.
 
 ------------------------------------------------------------------------
 
