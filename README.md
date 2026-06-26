@@ -45,9 +45,18 @@ Your dataset **must** contain the following columns exactly as named:
 
 Open this file and adjust the User Settings. You will specify your dataset, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), and which parameters vary by experimental conditions.
 
-**How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. \* `list()`: (Empty list). Fits one global parameter per subject. \* `list(v = ~ as.factor(Difficulty))`: Estimates a separate Drift Rate for each level of "Difficulty". \* `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`: Fits a full interaction for the v-ratio parameter.
+**How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. 
 
-**How to execute:** Change the `RUN_MODE` variable to choose how to run the pipeline: \* `"single"`: Runs a test fit on 1 subject so you can check for errors. \* `"group"`: Pools all data together to fit one massive "mega-subject" (Group Fit). \* `"local_batch"`: Automatically loops through all subjects and fits them on your computer. \* `"hpc"`: Saves your configuration and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
+* `list()`: (Empty list). Fits one global parameter per subject.
+* `list(v = ~ as.factor(Difficulty))`: Estimates a separate Drift Rate for each level of "Difficulty".
+* `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`: Fits a full interaction for the v-ratio parameter.
+
+**How to execute:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
+
+* `"single"`: Runs a test fit on 1 subject so you can check for errors.
+* `"group"`: Pools all data together to fit one massive "mega-subject" (Group Fit).
+* `"local_batch"`: Automatically loops through all subjects and fits them on your computer.
+* `"hpc"`: Saves your configuration and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
 
 > **What is saved?** For each subject, a `.rds` file is saved in `results/`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation.
 
