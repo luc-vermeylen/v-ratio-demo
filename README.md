@@ -45,6 +45,11 @@ Your dataset **must** contain the following columns exactly as named:
 
 Open this file and adjust the User Settings. You will specify your dataset, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), and which parameters vary by experimental conditions.
 
+** The Importance of the `OUTPUT_FOLDER` **
+The `OUTPUT_FOLDER` variable (defined in Step 1) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, PDF report, and CSV summary is saved inside `results/YOUR_FOLDER_NAME/`. Therefore, the approach here is to use one folder for one certain fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those.
+
+Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely on this exact folder name** to locate your data. You should always give it a descriptive, unique name representing the current model's hypothesis (e.g., `"vratio_by_emotion"` or `"static_boundaries"`). If you reuse an old folder name, the pipeline will overwrite your previous model fits!
+
 **How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. 
 
 * `list()`: (Empty list). Fits one global parameter per subject.
