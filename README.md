@@ -63,7 +63,7 @@ Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely o
 * `"local_batch"`: Automatically loops through all subjects and fits them on your computer.
 * `"hpc"`: Saves your configuration and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
 
-> **What is saved?** For each subject, a `.rds` file is saved in `results/`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation.
+> **What is saved?** For each subject, a `.rds` file is saved in `results/YOUR_FOLDER_NAME`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation.
 
 ### Step 2: Visual Assessment (`2_fit_assess.R`)
 
