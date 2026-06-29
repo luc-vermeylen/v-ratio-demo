@@ -688,8 +688,8 @@ objective_function <- function(params, observations, param_names, constants,
   if (!exists(".cpp_initialized", envir = .GlobalEnv)) {
     Sys.setenv(LC_ALL = "C") 
     library(Rcpp); library(RcppZiggurat); library(dplyr)
-    source("helper_functions.R") 
-    sourceCpp("models.cpp", rebuild = FALSE) 
+    source(file.path("R", "helper_functions.R")) 
+    sourceCpp(file.path("R", "models.cpp"), rebuild = FALSE) 
   }
   
   # merge parameters into one searchable vector
