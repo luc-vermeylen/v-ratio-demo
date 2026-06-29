@@ -18,9 +18,10 @@ To help you get started, **we have included the original datasets from Herregods
 ## Repository Overview
 
 - 📁 **`data/`**: Place your dataset (.csv or .RDS) here.
-- 📁 **`results/`**: Each fit wil get a new folder here where fit information, summary CSV, and PDF plots will appear.
-- 📁 **`R/`** and 📁 **`hpc/`**: Backend C++ engine, R helper functions, and Slurm scripts. *(Do not edit these).*
-- 📄 **`1_run_pipeline.R`**: The main file. Configure settings and launch fits here.
+- 📁 **`results/`**: Each fit wil get a new folder here where configuration (config.Rdata), fit information (.rds), plots (.pdf) and summaries (.csv) will appear.
+- 📁 **`R/`**: Backend C++ simulation code and R helper functions. *(Do not edit these).*
+- 📁 **`hpc/`**: Slurm scripts (made for the KU Leuven HPC infrastructure).
+- 📄 **`1_run_pipeline.R`**: The main file for running a fit. Configure settings and launch fits here.
 - 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
 - 📄 **`3_fit_compare.R`**: Compares different models to find the best fit via BIC.
 - 📄 **`4_fit_stats.R`**: Runs statistics (T-Tests, ANOVAs) and generates parameter plots.
@@ -43,12 +44,12 @@ Your dataset **must** contain the following columns exactly as named:
 
 ### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
-Open this file and adjust the User Settings. You will specify your dataset, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), and which parameters vary by experimental conditions.
+Open this file and adjust the User Settings. You will specify your dataset, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters vary by experimental conditions and which parameters to fix.
 
 ** The Importance of the `OUTPUT_FOLDER` **
-The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, PDF report, and CSV summary is saved inside `results/YOUR_FOLDER_NAME/`. Therefore, the approach here is to use one folder for one certain fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those.
+The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, `.pdf` report, and `.csv` summary is saved inside `results/OUTPUT_FOLDER/`. Therefore, the approach is to use one folder for one fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those using the `3_fit_compare.R` script.
 
-Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely on this exact folder name** to locate your data. The idea is to give it a descriptive, unique name representing the current model's hypothesis (e.g., `"vratio_by_emotion"` or `"static_boundaries"`). If you reuse an old folder name, the pipeline will overwrite your previous model fits!
+Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely on this exact folder name** to locate your data. The idea is to give it a descriptive, unique name representing the current model's hypothesis (e.g., `"vratio_by_emotion"` or `"static_boundaries"`). 
 
 **How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. 
 
@@ -56,14 +57,34 @@ Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely o
 * `list(v = ~ as.factor(Difficulty))`: Estimates a separate Drift Rate for each level of "Difficulty".
 * `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`: Fits a full interaction for the v-ratio parameter.
 
-**How to execute:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
+**How to use `FIXED_PARAMS`:** Provide a list with parameter = value to fix the parameter to that value.
 
-* `"single"`: Runs a test fit on 1 subject so you can check for errors.
+* `list()`: (Empty list). All parameters are free to vary.
+* `list(starting_point_confidence = 0.5)`. starting point for confidence is fixed to 0.5.
+
+**The different RUN_MODE's:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
+
+* `"single"`: Runs a test fit on 1 subject so you can check for errors. 
 * `"group"`: Pools all data together to fit one massive "mega-subject" (Group Fit).
-* `"local_batch"`: Automatically loops through all subjects and fits them on your computer.
-* `"hpc"`: Saves your configuration and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
+* `"local_batch"`: Automatically loops through all subjects and fits them on your local computer.
+* `"hpc"`: Saves your configuration file and created the fit folder (`config.RData`) and prints the exact `sbatch` command you need to copy/paste into the cluster terminal to run a massive parallel array job.
 
-> **What is saved?** For each subject, a `.rds` file is saved in `results/YOUR_FOLDER_NAME`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation.
+> **What is saved?** For each subject, a `.rds` file is saved in `results/YOUR_FOLDER_NAME`. This file contains the `$best_params`, `$fit_metrics` (BIC/Cost), the original `$observations`, the C++ simulated `$predictions` (10,000 trials of the winning model), and the `$final_proportions` used for the likelihood calculation. Here is a detailed breakdown of its contents:
+>*   **`best_params`**: A named vector of the winning parameter values. If you used experimental conditions (formulas), the pipeline automatically translates the mathematical regression slopes back into readable "marginal cell means" (e.g., `v:Hard = 1.2`, `v:Easy = 2.1`) so they are ready for plotting and ANOVAs.
+>*   **`best_betas`**: The raw mathematical coefficients (Intercepts and Slopes) that the optimizer actually found. If you did not use formulas in `VARYING_PARAMS`, this will be `NULL`.
+A sub-list containing the statistical quality of the fit:
+>*   **`best_cost`**: The final raw $G^2$ value minimized by the optimizer.
+>*   **`bic` & `aic`**: The Bayesian and Akaike Information Criterions, strictly penalized for the number of free parameters and the amount of data.
+>*   **`n_bins`**: The exact number of probability mass bins the data was split into for the cost calculation.
+>*   **`n_free_params` & `n_observations`**: The complexity of the model and the sample size.
+>*   **`observations`**: A clean, subsetted dataframe containing the exact empirical trial data used to fit this specific subject.
+>*   **`predictions`**: A high-resolution simulated dataset (by default, 10,000 trials per condition) generated by the C++ engine using the `best_params`. This is extremely useful if you want to create your own custom behavioral plots!
+>*   **`final_proportions`**: A nested list containing the exact probability mass distributions (observed vs. predicted) across all dynamic RT and Confidence bins. This is the raw mathematical foundation of the $G^2$ calculation.
+>*   **`info`**: A metadata list recording the `model` name, the exact `timestamp` the fit completed, the `subject` ID, and the exact `VARYING_PARAMS` formulas requested by the user.
+>*   **`param_info`**: The boundary configurations passed to DEoptim (the absolute lower and upper search limits for each parameter).
+>*   **`constants`**: All fixed mathematical constants used during the simulation (e.g., `dt`, `s`, `ntrials`, and any values set in `FIXED_PARAMS`).
+>*   **`targets` & `cost_method`**: A record of how the likelihood blocks and variables were mapped (the `FIT_TARGETS` list).
+>*   **`optim_full`**: The massive, raw output object returned directly by the `DEoptim` package, which contains the trace of all 500+ generations (useful for advanced optimization diagnostics).
 
 ### Step 2: Visual Assessment (`2_fit_assess.R`)
 
