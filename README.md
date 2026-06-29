@@ -139,11 +139,11 @@ R -e "install.packages(c('here','Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr',
 ```
 
 ### 2. Submitting Jobs
-You **do not** need to type out the `sbatch` command manually. The pipeline will write it for you!
-1. Open `1_run_pipeline.R` and configure your model.
-2. Set `RUN_MODE <- "hpc"`.
-3. Run the script on the login node (e.g., `Rscript 1_run_pipeline.R`).
-4. The script will save your configuration to the results folder and print the exact `sbatch` command you need. Simply copy and paste that command into your terminal.
+You **do not** need to type out the `sbatch` command manually. The pipeline will write it for you! Go to the **root folder** of the repository.
+1. Source your conda environment (```conda activate r_env```).
+2. open (```nano 1_run_pipeline.R```) and configure your model. Don't forget to set `RUN_MODE <- "hpc"`!
+3. Run the script on the login node of the hpc (e.g., `Rscript 1_run_pipeline.R`).
+4. The script will create the new results folder, save your configuration there (`config.Rdata`) and print the exact `sbatch` command you need. Simply copy and paste that command into your terminal.
 
 ### 3. Understanding the `sbatch` Command (for more flexibility)
 If you want to construct the command yourself, you must execute it from the **root folder** of the repository. Here is the anatomy of the submission command:
