@@ -18,7 +18,7 @@ To help you get started, **we have included the original datasets from Herregods
 ## Repository Overview
 
 - 📁 **`data/`**: Place your dataset (.csv or .RDS) here.
-- 📁 **`results/`**: Model fits, CSV summaries, and PDF plots will appear here.
+- 📁 **`results/`**: Each fit wil get a new folder here where fit information, summary CSV, and PDF plots will appear.
 - 📁 **`R/`** and 📁 **`hpc/`**: Backend C++ engine, R helper functions, and Slurm scripts. *(Do not edit these).*
 - 📄 **`1_run_pipeline.R`**: The main file. Configure settings and launch fits here.
 - 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
