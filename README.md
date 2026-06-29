@@ -115,6 +115,78 @@ Once you have selected your winning model, this script automatically extracts an
 
 ------------------------------------------------------------------------
 
+## Running on an HPC Cluster (KU Leuven / VSC)
+
+If you are running this pipeline on a supercomputer using Slurm (e.g., the WICE cluster at KU Leuven), the repository includes a dedicated `hpc/batch_fit.slurm` script. 
+
+### 1. Initial Environment Setup (Run Once)
+Before running the pipeline for the first time, you must log into the login node and set up an R environment containing all the necessary packages. Copy and paste these commands into your terminal:
+
+```bash
+# Create a fresh conda environment with base R
+conda create -n r_env r-base=4.3.1 r-essentials -c conda-forge
+
+# Activate the environment
+conda activate r_env
+
+# Install the required R packages
+R -e "install.packages(c('here','Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr','data.table','ggplot2','patchwork'), repos='https://cloud.r-project.org')"
+```
+
+### 2. Submitting Jobs (The Automatic Way)
+You **do not** need to type out the `sbatch` command manually. The pipeline will write it for you!
+1. Open `1_run_pipeline.R` and configure your model.
+2. Set `RUN_MODE <- "hpc"`.
+3. Run the script on the login node (e.g., `Rscript 1_run_pipeline.R`).
+4. The script will save your configuration to the results folder and print the exact `sbatch` command you need. Simply copy and paste that command into your terminal.
+
+### 3. Understanding the `sbatch` Command (The Manual Way)
+If you want to construct the command yourself, you must execute it from the **root folder** of the repository. Here is the anatomy of the submission command:
+
+```bash
+sbatch --job-name=vratio --array=1-51 --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=results/vratio/config.RData hpc/batch_fit.slurm
+```
+
+**What these arguments do:**
+*   `--job-name=vratio`: The name of your job as it will appear in the Slurm queue (`squeue`).
+*   `--array=1-51`: Tells Slurm to launch 51 parallel nodes (one for each subject). The script will automatically assign Subject 1 to Node 1, Subject 2 to Node 2, etc.
+*   `--export=NONE`: This prevents Slurm from copying your current terminal's environment variables to the compute nodes. When running large arrays, omitting this can cause the cluster to crash. `NONE` ensures a clean, stable startup for every job.
+*   `R_SCRIPT=R/fit.R`: Points the Slurm file to the fitting engine file.
+*   `CONFIG_PATH=...`: Points the engine to the specific settings file you created for this model fit.
+*   `hpc/batch_fit.slurm`: The actual Slurm script containing the hardware requests (memory, CPUs, time limits).
+
+### 4. Advanced: Submitting Multiple Models at Once
+You can easily queue up multiple different models without duplicating any actions. 
+
+**Step 1:** Open `1_run_pipeline.R`, set your first model's settings (e.g., `OUTPUT_FOLDER <- "model_A"`), and run it in `"hpc"` mode to generate its `config.RData`. Repeat this for `"model_B"`, `"model_C"`, etc.
+
+**Step 2:** Use a bash `for` loop in your terminal to submit them all simultaneously.
+
+**Example A: Submit a specific list of models**
+```bash
+for folder in results/model_A results/model_B results/model_C; do
+  # Extracts the folder name to use as the job name
+  job_name=$(basename $folder)
+  
+  sbatch --job-name=$job_name --array=1-51 --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=$folder/config.RData hpc/batch_fit.slurm
+done
+```
+
+**Example B: Submit ALL models that match a pattern**
+If you created 10 models and named them all starting with `vratio_`, you can queue all 10 arrays (510 jobs) with one loop:
+```bash
+for folder in results/vratio_*; do
+  job_name=$(basename $folder)
+  sbatch --job-name=$job_name --array=1-51 --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=$folder/config.RData hpc/batch_fit.slurm
+done
+```
+
+### 5. Tracking HPC Output
+*   **Results:** As jobs finish, `.rds` files will quietly appear inside your designated `results/OUTPUT_FOLDER/`.
+*   **Error Logs:** Slurm will generate text logs for every subject (e.g., `slurm-12345_1.o` and `slurm-12345_1.e`) in a folder named **`slurm_oe/`**. If a subject crashes, check the `.e` (error) file in this directory to see what went wrong.
+  
+------------------------------------------------------------------------
+
 ## The FCB Model Parameters Dictionary
 
 The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions). Parameter boundaries can be changed in R/helper_functions.R, in the model_params list.
