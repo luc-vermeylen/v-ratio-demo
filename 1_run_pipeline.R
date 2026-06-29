@@ -4,14 +4,14 @@
 # Directions:
 # 1. Edit your settings in Section 1.
 # 2. Choose your RUN_MODE in Section 2.
-# 3. Run this file (e.g., by clicking the "Source" button) or run via terminal.
+# 3. Run this file
 # ==============================================================================
 
 # ==============================================================================
 # 1. USER SETTINGS
 # ==============================================================================
-OUTPUT_FOLDER <- "vratio" # important! you identifier of model
-DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # Must be in /data/ folder
+OUTPUT_FOLDER <- "vratio" # the folder where fits will be stored (the model identifier)
+DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # Must be in the /data folder
 SUBJECT_COL   <- "sub_id"
 
 MODEL_NAME    <- "FCB_cj6" # FCB_cj2 or FCB_cj6 depending on if you have binary or 6 levels of confidence
@@ -20,7 +20,7 @@ VARYING_PARAMS <- list() # e.g., list(v = ~ as.factor(Difficulty))
 FIXED_PARAMS   <- list() # e.g., list(starting_point_confidence = 0.5)
 
 ITER_MAX  <- 10 # 1000 recommended
-USE_CORES <- 1  # 1 for parallel processing during fitting, 0 for turning this off
+USE_CORES <- 1  # 1 for parallel processing within DEoptim, 0 for turning this off
 
 # ==============================================================================
 # 2. EXECUTION MODE
