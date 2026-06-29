@@ -84,6 +84,11 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 >*   **`targets` & `cost_method`**: A record of how the likelihood blocks and variables were mapped (the `FIT_TARGETS` list).
 >*   **`optim_full`**: The massive, raw output object returned directly by the `DEoptim` package, which contains the trace of all generations (useful for advanced optimization diagnostics).
 
+> **Running Multiple Fit Attempts**
+> * If you suspect a model didn't fit well, **you can simply run the exact same fit again in the same folder**. 
+> * The pipeline uses precise timestamps in the `.rds` filenames, meaning old fits are never accidentally overwritten.
+> * When you run Step 2 (`2_fit_assess.R`), the script automatically groups all files by subject, **identifies the fit attempt with the lowest $G^2$ cost**, and discards the rest. The pipeline automatically handles the cleanup and guarantees you only analyze the absolute best fits!
+
 ### Step 2: Visual Assessment (`2_fit_assess.R`)
 
 **⚠️ You MUST run this script before comparing models or running statistics!** This script reads all the `.rds` files, aggregates them into a lightweight CSV, and evaluates if the model actually captured human behavior.
