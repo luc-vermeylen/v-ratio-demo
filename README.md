@@ -18,7 +18,7 @@ To help you get started, **we have included the original datasets from Herregods
 ## Repository Overview
 
 - 📁 **`data/`**: Place your dataset (.csv or .RDS) here.
-- 📁 **`results/`**: Each fit wil get a new folder here where configuration (config.Rdata), fit information (.rds), plots (.pdf) and summaries (.csv) will appear.
+- 📁 **`results/`**: Each fit will get a new folder here where configuration (config.Rdata), fit information (.rds), plots (.pdf) and summaries (.csv) will appear.
 - 📁 **`R/`**: Backend C++ simulation code and R helper functions. *(Do not edit these).*
 - 📁 **`hpc/`**: Slurm scripts (made for the KU Leuven HPC infrastructure).
 - 📄 **`1_run_pipeline.R`**: The main file for running a fit. Configure settings and launch fits here.
@@ -166,3 +166,13 @@ To capture both the primary decision and the confidence judgement, the pipeline 
 
 ### Independent Likelihood Blocks for Multiple Conditions
 If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. 
+
+------------------------------------------------------------------------
+
+## Requirements
+The following R packages are required. (If running on the HPC, ensure your conda environment contains these).
+here (for robust directory management)
+Rcpp, RcppZiggurat (for the C++ simulation engine)
+DEoptim (for global parameter optimization)
+dplyr, tidyr, data.table (for data wrangling)
+ggplot2, patchwork (for plotting)
