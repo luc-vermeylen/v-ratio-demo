@@ -120,9 +120,10 @@ The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by d
 
 | Parameter | Stage | Description |
 |:-----------------------|:-----------------------|:-----------------------|
-| **`a`** | Primary | **Decision Boundary**: The total evidence required to make the primary choice. |
-| **`v`** | Primary | **Drift Rate**: The speed of information accumulation for the primary choice. |
-| **`ter`** | Primary | **Non-Decision Time**: Encoding and motor execution time (seconds). |
+| **`a`** | Decision | **Decision Boundary**: The total evidence required to make the primary choice. |
+| **`v`** | Decision | **Drift Rate**: The speed of information accumulation for the primary choice. |
+| **`ter`** | Decision | **Non-Decision Time**: Encoding and motor execution time (seconds). |
+| **`a_slope`** | Decision | **Decision Boundary Slope**: How fast the decision boundaries collapse. |
 | **`a2`** | Confidence | **Confidence Boundary**: The total evidence space for the confidence judgment. |
 | **`vratio`** | Confidence | **V-Ratio**: The ratio of post-decisional drift to primary drift ($v_{post} = v \times vratio$). If an error is made, $v_{post}$ is automatically reversed (multiplied by -1) in the C++ code to drive confidence downwards. |
 | **`a2_slope_upper`** | Confidence | **Upper Bound Collapse**: How fast the upper confidence boundary collapses. |
