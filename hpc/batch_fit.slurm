@@ -16,7 +16,7 @@
 1. SETUP YOUR ENVIRONMENT (Run once on the login node):
    conda create -n r_env r-base=4.3.1 r-essentials -c conda-forge
    conda activate r_env
-   R -e "install.packages(c('Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr','data.table','ggplot2','patchwork'), repos='https://cloud.r-project.org')"
+   R -e "install.packages(c('here','Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr','data.table','ggplot2','patchwork'), repos='https://cloud.r-project.org')"
 2. LOCATIONS:
 - Navigate to your project folder, where you have the R scripts, data and this .slurm file
 - In that project folder, run the sbatch commands explained below.
