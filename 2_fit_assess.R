@@ -73,6 +73,19 @@ for (f in files) {
 master_table_full <- bind_rows(param_list) %>% 
   left_join(bind_rows(metrics_list), by = c("subject_id", "fit_condition", "file_id", "cost"))
 
+unique_subs <- unique(master_table_full$subject_id)
+if ("GROUP" %in% unique_subs && length(unique_subs) > 1) {
+  warning(
+    "\n\n[SAFETY TRIGGERED] \n",
+    "Detected a 'GROUP' fit mixed with individual fits in the same folder.\n",
+    "the 'GROUP' fit has been automatically EXCLUDED from this aggregation.\n",
+    "Please use a separate OUTPUT_FOLDER for group-level fits in the future!\n\n",
+    call. = FALSE
+  )
+  # Safely drop the GROUP fits
+  master_table_full <- master_table_full %>% filter(subject_id != "GROUP")
+}
+
 master_table <- master_table_full %>% 
   group_by(subject_id, fit_condition) %>% 
   filter(cost == min(cost)) %>% 
