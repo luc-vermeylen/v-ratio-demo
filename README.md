@@ -89,7 +89,8 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 **⚠️ You MUST run this script before comparing models or running statistics!** This script reads all the `.rds` files, aggregates them into a lightweight CSV, and evaluates if the model actually captured human behavior.
 
 **Outputs:** 
-* **`fit_metrics_summary.csv`**: A spreadsheet of BICs and parameters.
+* **`fit_metrics_summary.csv`**: A spreadsheet of BICs.
+* **`master_parameter_report.csv`**: A spreadsheet with all parameters.
 * **`grand_average_fit_assessment.pdf`**: A visual report containing: 
     * *Decision RT Distributions:* A mirrored density plot of observed vs predicted RTs.
     * *Confidence RT Distributions:* The speed of the confidence judgment.
@@ -97,20 +98,20 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 
 ### Step 3: Model Comparison (`3_fit_compare.R`)
 
-If you fit multiple models to test competing hypotheses (e.g., one folder where `v` varies, and another where `vratio` varies), this script ranks them. Open it and list your result folders in `FOLDERS_TO_COMPARE`.
+If you fit multiple models to test competing hypotheses (e.g., one folder where `v` varies, and another where `vratio` varies), this script ranks them. Open it and list your result folders in `FOLDERS_TO_COMPARE`. Note: You can only validly compare models that were fitted on the exact same observations, the same number of subjects, and the same binning structure (i.e., identical FIT_TARGETS, for this reason, n_bins used for the the $G^2$ calculation is stored and printed in the model comparison table).
 
 **Outputs:** 
-* `model_comparison_plots.pdf`: Shows boxplots of BICs, Subject "Wins", and the Evidence Gap (delta-BIC). 
-* `summary_model_comparison_detailed.csv`: A table ranking models by overall BIC, Akaike Weights, and penalizations.
+* `model_comparison_plots.pdf`: Shows boxplots of sum BICs, Subject "Wins", and the Evidence Gap (delta-BIC) by model. 
+* `summary_model_comparison_detailed.csv`: A table ranking models by sum BIC, dBIC, Akaike Weights and Ratio, Raw cost, model complexity penalty, number of parameters, observations and bins used for the $G^2$ calculation.
 
 ### Step 4: Parameter Statistics (`4_fit_stats.R`)
 
 Once you have selected your winning model, this script automatically extracts and analyzes the estimated parameters.
 
 **Outputs:** 
-* **Global Parameters Plot**: Generates boxplots of shared parameters against the theoretical optimization boundaries. This is crucial for checking for "boundary swarming" (ensuring the optimizer didn't get trapped against a limit).
-* **Individual Trends & Group Means**: Generates Spaghetti plots and summary plots for any parameters you manipulated experimentally.
-* **`parameter_anova_results.csv`**: Automatically runs T-Tests or Repeated-Measures ANOVAs on your varying parameters and saves the F-values, p-values, and Partial Eta Squared (PES) effect sizes.
+* **Global Parameters Plot**: Generates boxplots of shared parameters against the theoretical optimization boundaries. This is crucial for checking for "boundary swarming" (ensuring the optimizer didn't get trapped against a limit). 
+* **Individual Trends & Group Means**: Generates Spaghetti plots and summary plots for any `VARYING_PARAMS`.
+* **`parameter_anova_results.csv`**: Automatically runs T-Tests or Repeated-Measures ANOVAs on your varying parameters and saves the T/F-values, p-values, and effect sizes.
 
 ------------------------------------------------------------------------
 
