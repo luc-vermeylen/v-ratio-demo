@@ -17,12 +17,11 @@
    conda create -n r_env r-base=4.3.1 r-essentials -c conda-forge
    conda activate r_env
    R -e "install.packages(c('here','Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr','data.table','ggplot2','patchwork'), repos='https://cloud.r-project.org')"
+
 2. LOCATIONS:
-- Navigate to your project folder, where you have the R scripts, data and this .slurm file
-- In that project folder, run the sbatch commands explained below.
+- You must submit this script from the ROOT folder of this repository.
 - Slurm logs (errors/output) will appear in a subfolder: slurm_oe/
-- Model results (.rds/.pdf) will appear in a subfolder you named INSIDE your R script.
-- Tip: name results folder the same as the fit script
+- Model results (.rds/.pdf) will appear in the results/ folder.
 
 3. THE "EXPORT=NONE" TRICK:
 We use --export=NONE to prevent "user env retrieval" errors. When running 
@@ -30,21 +29,13 @@ large arrays, Slurm can crash trying to copy your terminal settings.
 NONE ensures a clean, stable startup for every job.
 
 4. SUBMIT JOBS:
-Copy and paste these into your terminal from in the project folder
-Change your array to the subject index range and R_SCRIPT to your fit file.
+You do not need to type the sbatch command manually! 
+Instead, configure your model in `1_run_pipeline.R` and set RUN_MODE <- "hpc". 
+Running `1_run_pipeline.R` will automatically print the exact `sbatch` command 
+you need to copy and paste into the terminal.
 
---- To run a single model ---
-sbatch --job-name=my_fit --array=1-51 --export=NONE,R_SCRIPT=model1.R batch_fit.slurm
-
---- Run multiple models ---
-for script in model1.R model2.R model3.R; do
-  sbatch --job-name=$script --array=1-51 --export=NONE,R_SCRIPT=$script batch_fit.slurm
-done
-
---- To run all scripts in your folder matching a pattern ---
-for script in model-*.R; do
-  sbatch --job-name=$script --array=1-51 --export=NONE,R_SCRIPT=$script batch_fit.slurm
-done
+Example of an auto-generated command:
+sbatch --job-name=vratio --array=1-51 --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=results/vratio/config.RData hpc/batch_fit.slurm
 HELP
 
 # ==============================================================================
@@ -56,13 +47,13 @@ CONDA_ENV_NAME="r_env"
 # 0. ENVIRONMENT SETUP
 # ==============================================================================
 
-# 1. Ensure an R script was specified
-if [ -z "$R_SCRIPT" ]; then
-    echo "ERROR: No R script provided. Use --export=NONE,R_SCRIPT=your_script.R"
+# 1. Ensure an R script and Config Path were specified
+if [ -z "$R_SCRIPT" ] || [ -z "$CONFIG_PATH" ]; then
+    echo "ERROR: Missing arguments. Use --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=results/.../config.RData"
     exit 1
 fi
 
-# 2. Set the working directory to where you submitted the job
+# 2. Set the working directory to where you submitted the job (Root of Repo)
 cd "$SLURM_SUBMIT_DIR" || exit 1
 mkdir -p slurm_oe
 
@@ -84,6 +75,7 @@ echo "SLURM job started at: $(date)"
 echo "User:           $USER"
 echo "Job ID:         ${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}"
 echo "R script:       $R_SCRIPT"
+echo "Config path:    $CONFIG_PATH"
 echo "Working dir:    $SLURM_SUBMIT_DIR"
 echo "Using R from:   $(which R)"
 echo "=============================================="
@@ -91,7 +83,7 @@ echo "=============================================="
 # ==============================================================================
 # 2. RUN THE R SCRIPT
 # ==============================================================================
-Rscript --vanilla "$R_SCRIPT" ${SLURM_ARRAY_TASK_ID}
+Rscript --vanilla "$R_SCRIPT" ${SLURM_ARRAY_TASK_ID} "$CONFIG_PATH"
 
 echo "=============================================="
 echo "SLURM job finished at: $(date)"
