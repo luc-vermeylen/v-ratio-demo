@@ -1,12 +1,10 @@
 # --- R standards ---
 .Rhistory
 .Rapp.history
-.RData
 .RDataTmp
 .Ruserdata
 .Renviron
 .Rproj.user/
-*.Rproj
 
 # --- Large Data & HPC results ---
 slurm_oe/
