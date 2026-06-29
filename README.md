@@ -48,7 +48,6 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 
 > **The Importance of the `OUTPUT_FOLDER`**
 > The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, `.pdf` report, and `.csv` summary is saved inside `results/OUTPUT_FOLDER/`. Therefore, the approach is to use one folder for one fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those using the `3_fit_compare.R` script.
-
 > Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely on this exact folder name** to locate your data. The idea is to give it a descriptive, unique name representing the current model's hypothesis (e.g., `"vratio_by_emotion"` or `"static_boundaries"`). 
 
 **How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. 
@@ -62,7 +61,7 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 * `list()`: (Empty list). All parameters are free to vary.
 * `list(starting_point_confidence = 0.5)`. starting point for confidence is fixed to 0.5.
 
-**The different RUN_MODE's:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
+**The different `RUN_MODE`'s:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
 
 * `"single"`: Runs a test fit on 1 subject so you can check for errors. 
 * `"group"`: Pools all data together to fit one massive "mega-subject" (Group Fit).
