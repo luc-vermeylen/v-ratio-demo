@@ -140,12 +140,13 @@ R -e "install.packages(c('here','Rcpp','RcppZiggurat','DEoptim','dplyr','tidyr',
 
 ### 2. Submitting Jobs
 You **do not** need to type out the `sbatch` command manually. The pipeline will write it for you! 
-1. Go to the folder where you want to work, e.g., ```bash cd $VSC_DATA/vratio```
-2. Clone the repo here: ```bash git clone https://github.com/luc-vermeylen/v-ratio-demo.git```
-3. Source your conda environment (```bash conda activate r_env```).
-4. open and configure your model (```bash nano 1_run_pipeline.R```). Don't forget to set `RUN_MODE <- "hpc"`!
-5. Run the script on the login node of the hpc (e.g., ```bash Rscript 1_run_pipeline.R```).
-6. The script will create the new results folder, save your configuration there (`config.Rdata`) and print the exact `sbatch` command you need. Simply copy and paste that command into your terminal.
+1. Go to your data folder on the cluster, e.g., ```cd $VSC_DATA```
+2. Clone the repository here: ```git clone https://github.com/luc-vermeylen/v-ratio-demo.git```
+3. Move into the newly downloaded folder: ```cd v-ratio-demo``` (*note: If you are using your own dataset, make sure to upload your CSV file into the data/ folder now*)
+4. Activate your Conda environment: ```conda activate r_env```
+5. open and configure your model: ```nano 1_run_pipeline.R``` *(note: change your settings, ensure RUN_MODE <- "hpc", then press Ctrl+O and Enter to save, and Ctrl+X to exit)*
+6. Run the script on the login node: ```Rscript 1_run_pipeline.R```
+7. The script will create the new results folder, save your configuration there (`config.Rdata`) and print the exact `sbatch` command you need. Simply copy and paste that command into your terminal.
 
 ### 3. Understanding the `sbatch` Command (for more flexibility)
 If you want to construct the command yourself, you must execute it from the **root folder** of the repository. Here is the anatomy of the submission command:
