@@ -20,7 +20,7 @@ To help you get started, **we have included the original datasets from Herregods
 - 📁 **`data/`**: Place your dataset (.csv or .RDS) here.
 - 📁 **`results/`**: Each fit will get a new folder here where configuration (config.Rdata), fit information (.rds), plots (.pdf) and summaries (.csv) will appear.
 - 📁 **`R/`**: Backend C++ simulation code and R helper functions. *(Do not edit these).*
-- 📁 **`hpc/`**: Slurm scripts (made for the KU Leuven HPC infrastructure). For more info on how to use this, see `hpc/batch_fit.slurm`.
+- 📁 **`hpc/`**: Slurm scripts (made for the KU Leuven HPC infrastructure). Detailed information on how to run this on the hpc can be found in below and within `hpc/batch_fit.slurm`.
 - 📄 **`1_run_pipeline.R`**: The main file for running a fit. Configure settings and launch fits here.
 - 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
 - 📄 **`3_fit_compare.R`**: Compares different models to find the best fit via BIC.
