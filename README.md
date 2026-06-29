@@ -98,7 +98,7 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 
 ### Step 3: Model Comparison (`3_fit_compare.R`)
 
-If you fit multiple models to test competing hypotheses (e.g., one folder where `v` varies, and another where `vratio` varies), this script ranks them. Open it and list your result folders in `FOLDERS_TO_COMPARE`. Note: You can only validly compare models that were fitted on the exact same observations, the same number of subjects, and the same binning structure (i.e., identical FIT_TARGETS, for this reason, n_bins used for the the $G^2$ calculation is stored and printed in the model comparison table).
+If you fit multiple models to test competing hypotheses (e.g., one folder where `v` varies, and another where `vratio` varies), this script ranks them. Open it and list your result folders in `FOLDERS_TO_COMPARE`. Note: You can only validly compare models that were fitted on the exact same observations, the same number of subjects, and the same binning structure (for this reason, n_bins used for the the $G^2$ calculation is stored and printed in the model comparison table).
 
 **Outputs:** 
 * `model_comparison_plots.pdf`: Shows boxplots of sum BICs, Subject "Wins", and the Evidence Gap (delta-BIC) by model. 
