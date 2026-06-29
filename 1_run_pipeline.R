@@ -10,7 +10,7 @@
 # ==============================================================================
 # 1. USER SETTINGS
 # ==============================================================================
-OUTPUT_FOLDER <- "vratio" # the folder where fits will be stored (the model identifier)
+OUTPUT_FOLDER <- "test" # the folder where fits will be stored (the model identifier)
 DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # Must be in the /data folder
 SUBJECT_COL   <- "sub_id"
 
