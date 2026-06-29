@@ -125,7 +125,7 @@ The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by d
 | **`ter`** | Decision | **Non-Decision Time**: Encoding and motor execution time (seconds). |
 | **`a_slope`** | Decision | **Decision Boundary Slope**: How fast the decision boundaries collapse. |
 | **`a2`** | Confidence | **Confidence Boundary**: The total evidence space for the confidence judgment. |
-| **`vratio`** | Confidence | **V-Ratio**: The ratio of post-decisional drift to primary drift ($v_{post} = v \times vratio$). If an error is made, $v_{post}$ is automatically reversed (multiplied by -1) in the C++ code to drive confidence downwards. |
+| **`vratio`** | Confidence | **V-Ratio**: The ratio of post-decisional drift to primary drift ($v_{post} = v \times vratio$). |
 | **`ter2`** | Confidence | **Confidence Non-Decision Time**: Delay specific to confidence reporting. Can be negative, implying metacognitive processing starts during the primary motor execution. |
 | **`a2_slope_upper`** | Confidence | **Upper Bound Collapse**: How fast the upper confidence boundary collapses. |
 | **`a2_slope_lower`** | Confidence | **Lower Bound Collapse**: How fast the lower confidence boundary collapses. |
