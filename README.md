@@ -89,8 +89,8 @@ Open this file and adjust the User Settings. You will specify your dataset, the 
 **⚠️ You MUST run this script before comparing models or running statistics!** This script reads all the `.rds` files, aggregates them into a lightweight CSV, and evaluates if the model actually captured human behavior.
 
 **Outputs:** 
-1. **`fit_metrics_summary.csv`**: A spreadsheet of BICs and parameters. 
-2. **`grand_average_fit_assessment.pdf`**: A visual report containing: 
+* **`fit_metrics_summary.csv`**: A spreadsheet of BICs and parameters.
+* **`grand_average_fit_assessment.pdf`**: A visual report containing: 
 ** *Decision RT Distributions:* A mirrored density plot of observed vs predicted RTs.
 ** *Confidence RT Distributions:* The speed of the confidence judgment.
 ** *Confidence Rating Mass:* A barplot showing if the model predicted the exact empirical frequencies of ratings (e.g., 1-6).
