@@ -171,8 +171,8 @@ If a user maps parameters to experimental conditions (e.g., a `Difficulty` facto
 
 ## Requirements
 The following R packages are required. (If running on the HPC, ensure your conda environment contains these).
-here (for robust directory management)
-Rcpp, RcppZiggurat (for the C++ simulation engine)
-DEoptim (for global parameter optimization)
-dplyr, tidyr, data.table (for data wrangling)
-ggplot2, patchwork (for plotting)
+- `here` (for robust directory management)
+- `Rcpp`, `RcppZiggurat` (for the C++ simulation engine)
+- `DEoptim` (for global parameter optimization)
+- `dplyr`, `tidyr`, `data.table` (for data wrangling)
+- `ggplot2`, `patchwork` (for plotting)
