@@ -109,7 +109,7 @@ If you fit multiple models to test competing hypotheses (e.g., one folder where 
 Once you have selected your winning model, this script automatically extracts and analyzes the estimated parameters.
 
 **Outputs:** 
-* **Global Parameters Plot**: Generates boxplots of shared parameters against the theoretical optimization boundaries. This is crucial for checking for "boundary swarming" (ensuring the optimizer didn't get trapped against a limit). 
+* **Global Parameters Plot**: Generates boxplots of shared ("global") parameters. You can optionally set `SHOW_BOUNDARIES <- TRUE` to plot them against the DEoptim optimization boundaries. This is useful for checking for "boundary swarming", ensuring the optimizer didn't get trapped against the parameter boundaries (otherwise this suggests that a larger parameter space is warranted). 
 * **Individual Trends & Group Means**: Generates Spaghetti plots and summary plots for any `VARYING_PARAMS`.
 * **`parameter_anova_results.csv`**: Automatically runs T-Tests or Repeated-Measures ANOVAs on your varying parameters and saves the T/F-values, p-values, and effect sizes.
 
