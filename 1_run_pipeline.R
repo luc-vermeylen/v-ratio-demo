@@ -4,7 +4,8 @@
 # Directions:
 # 1. Edit your settings in Section 1.
 # 2. Choose your RUN_MODE in Section 2.
-# 3. Run this file
+# 3. Run this file by typing source('1_run_pipeline.R') in your R console, 
+#    or by clicking the "Source" button in RStudio.
 # ==============================================================================
 
 # ==============================================================================
