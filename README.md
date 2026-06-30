@@ -292,7 +292,7 @@ By decoupling data partitioning from parameter flexibility, the pipeline ensures
 *   `CONDITIONS` defines the fixed evaluation architecture. It partitions the data into independent conditional likelihood blocks regardless of the model's complexity.
 *   `VARYING_PARAMS` dictates the flexibility the model has to accommodate those blocks.
 
-Under this framework, **a Null model is still evaluated by condition**. However, because its parameters are tied globally, it predicts identical probability distributions for every condition. This allows for model comparison based purely on explained variance of the condition difference, rather than differences in likelihood structure.
+Under this framework, **a Null model's likelihood is still evaluated by condition**. However, because its parameters are tied globally, it predicts identical probability distributions for every condition. This allows for model comparison based purely on explained variance of the condition difference, rather than differences in likelihood structure.
 
 ### When does this matter most?
 
