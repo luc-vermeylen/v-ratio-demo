@@ -285,7 +285,7 @@ G2 is a sum taken over all bins used in the cost function. If the Null model is 
 
 This problem is compounded by the pipeline's adaptive binning. Because bin resolution is chosen dynamically based on the trial count available in each cell, splitting the data into condition-specific blocks also shrinks the trial count per cell — which can trigger a *coarser* binning scheme on top of having more blocks (e.g. a pooled cell with 400 trials might use 10 bins, while the same cell split into two 200-trial blocks might drop to 6 bins each).
 
-Comparing a model evaluated on pooled data to a model evaluated on split data therefore violates the foundational assumptions of model selection. The resulting G2 and BIC values are computed on different scales, making them incomparable.
+Comparing a model evaluated on pooled data to a model evaluated on split data therefore puts the resulting G2 and BIC values on different scales, making them incomparable.
 
 ### The Solution: Constant Likelihood Spaces, Flexible Parameters
 By decoupling data partitioning from parameter flexibility, the pipeline ensures valid model selection:
