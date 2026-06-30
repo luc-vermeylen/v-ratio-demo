@@ -12,7 +12,7 @@
 # 0. DIRECTORY SETUP
 # ==============================================================================
 
-OUTPUT_FOLDER <- "vratio" # specify the directory with your fit results here
+OUTPUT_FOLDER <- "testFit" # specify the directory with your fit results here
 
 library(here)
 library(dplyr)

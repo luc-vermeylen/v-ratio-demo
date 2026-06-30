@@ -11,7 +11,7 @@
 # They must be located inside the "results/" directory.
 # Set to "ALL" to automatically compare every folder present in the results directory.
 
-FOLDERS_TO_COMPARE <- c("vratio", "vratio_copy") 
+FOLDERS_TO_COMPARE <- c("testFit", "testFit_byManipulation") 
 # Example for specific folders: c("test_vratio_1", "test_vratio_2")
 
 library(here)
@@ -121,7 +121,7 @@ p1 <- ggplot(plot_df, aes(x = reorder(model_label, bic), y = bic, fill = model_l
   geom_boxplot(alpha = 0.6, outlier.shape = 16, outlier.size = 1) +
   geom_jitter(width = 0.1, alpha = 0.2, size = 0.8) +
   coord_cartesian(ylim = c(quantile(plot_df$bic, 0.05, na.rm=T)*0.8, quantile(plot_df$bic, 0.95, na.rm=T)*1.2)) +
-  theme_minimal() + labs(title = "Fit Quality (BIC)", x = "Model", y = "BIC") +
+  theme_minimal() + labs(title = "Fit Quality (Sum BIC)", x = "Model", y = "BIC") +
   theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 
 p2 <- ggplot(group_summary, aes(x = reorder(Model, -Wins), y = Wins, fill = Model)) +
@@ -129,12 +129,17 @@ p2 <- ggplot(group_summary, aes(x = reorder(Model, -Wins), y = Wins, fill = Mode
   theme_minimal() + labs(title = "Subject Preferences", x = "Model", y = "N Wins") +
   theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
 
+safe_dbic <- subject_selection$delta_bic[subject_selection$delta_bic < 1e6]
+dbic_upper_limit <- max(50, quantile(safe_dbic, 0.95, na.rm = TRUE) * 1.1)
+
 p3 <- ggplot(subject_selection %>% filter(delta_bic < 1e6), aes(x = reorder(model_label, delta_bic), y = delta_bic, fill = model_label)) +
-  geom_violin(alpha = 0.5, draw_quantiles = c(0.5)) +
-  geom_hline(yintercept = 10, linetype = "dotted", color = "red") + 
-  coord_cartesian(ylim = c(0, 50)) +
-  theme_minimal() + labs(title = "Evidence Gap (dBIC)", x = "Model", y = "dBIC from Winner") +
+  geom_boxplot(alpha = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.1, alpha = 0.3, size = 1) +
+  geom_hline(yintercept = 10, linetype = "dotted", color = "red", linewidth = 0.8) + 
+  coord_cartesian(ylim = c(0, dbic_upper_limit)) +
+  theme_minimal() + labs(title = "Evidence Gap (delta BIC)", x = "Model", y = "dBIC from Winner") +
   theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 1))
+
 
 # Compile plot
 final_plot <- (p1 | p2) / p3
@@ -162,6 +167,12 @@ report_table <- group_summary %>%
 
 print(as.data.frame(report_table), row.names = FALSE)
 
+cat("============================================================================================\n")
+
+csv_path <- here("results", "summary_model_comparison_detailed.csv")
+write.csv(group_summary, csv_path, row.names = FALSE)
+cat(sprintf("Summary table saved to: %s\n", csv_path))
+
 # Robust Validity Check
 unique_bin_avgs <- unique(group_summary$Bins)
 if (length(unique_bin_avgs) > 1) {
@@ -169,12 +180,6 @@ if (length(unique_bin_avgs) > 1) {
   if (max(unique_bin_avgs) - min(unique_bin_avgs) > 2) {
     cat("\n!!! WARNING: Bins differ significantly between models. BIC comparison may be invalid. !!!\n")
   } else {
-    cat("\nNote: Small variations in bin counts detected due to dynamic binning. Comparison remains valid.\n")
+    cat("\nNote: Small variations in bin counts detected. Comparison remains valid.\n")
   }
 }
-
-cat("============================================================================================\n")
-
-csv_path <- here("results", "summary_model_comparison_detailed.csv")
-write.csv(group_summary, csv_path, row.names = FALSE)
-cat(sprintf("Summary table saved to: %s\n", csv_path))
