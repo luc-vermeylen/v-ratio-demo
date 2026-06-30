@@ -1,3 +1,19 @@
+------------------------------------------------------------------------
+
+## Table of Contents
+
+- [Repository Overview](#repository-overview)
+- [Required Data Format](#required-data-format)
+- [Step-by-Step Workflow](#step-by-step-workflow)
+  - [Step 1: Configure & Fit](#step-1-configure--fit-1_run_pipeliner)
+  - [Step 2: Visual Assessment](#step-2-visual-assessment-2_fit_assessr)
+  - [Step 3: Model Comparison](#step-3-model-comparison-3_fit_comparer)
+  - [Step 4: Parameter Statistics](#step-4-parameter-statistics-4_fit_statsr)
+- [Running on an HPC Cluster](#running-on-an-hpc-cluster-ku-leuven--vsc)
+- [The FCB Model Parameters Dictionary](#the-fcb-model-parameters-dictionary)
+- [Details of the Cost Function (G²)](#details-of-the-cost-function-g2)
+- [Good Model Comparison Practices](#good-model-comparison-practices-decoupling-likelihood-from-parameters)
+- [Requirements](#requirements)
 
 ------------------------------------------------------------------------
 
@@ -53,9 +69,9 @@ Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeli
 **Specify the `CONDITIONS` and `VARYING_PARAMS`:** If you wish to include experimental conditions, you can do so here. In order to guarantee fair model comparison (see more details below), simply follow this rule:
 
 1. **`CONDITIONS`**: Look at the *most complex* model you plan to test. What experimental factors does it use? List them here as a vector of strings (e.g., `c("Difficulty", "Emotion")`). **You must use this exact same `CONDITIONS` list for every single model you fit in your comparison set**, even for the Null model. This controls the splitting of the Likelihood.
-2. **`VARYING_PARAMS`**: Which parameters are actually allowed to change across those conditions in *this specific fit*? Use R formulas here (e.g., `list(v = ~ as.factor(Difficulty))` or `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`). To fit a Null model, simply leave this empty as `list()`. This controls the splitting of the Parameters.
+2. **`VARYING_PARAMS`**: Which parameters are actually allowed to change across those conditions in *this specific fit*? Use R formulas here (e.g., `list(v = ~ Difficulty)` or `list(vratio = ~ Emotion * Validity)`). To fit a Null model, simply leave this empty as `list()`. This controls the splitting of the Parameters.
 
-> **Quick Rationale:** We separate *splitting the likelihood* (`CONDITIONS`) from *splitting the parameters* (`VARYING_PARAMS`) in order to be able to compare complex models to complete Null models. If your Null model doesn't use the exact same `CONDITIONS` as your Complex model, they are "graded" on different ways of splitting the data, and therefore, their BICs should not be compared! See the **Good Model Comparison Practices** section below for a detailed explanation.
+> **Quick Rationale:** We separate *splitting the likelihood* (`CONDITIONS`) from *splitting the parameters* (`VARYING_PARAMS`) in order to be able to compare complex models to complete Null models. If your Null model doesn't use the exact same `CONDITIONS` as your Complex model, they are "graded" on different ways of splitting the data, and therefore, their BICs should not be compared! [See below](#good-model-comparison-practices-decoupling-likelihood-from-parameters)
 
 **Specify the `FIXED_PARAMS`:** Provide a list with parameter = value to fix the parameter to that value.
 
@@ -246,7 +262,7 @@ To capture both the primary decision and the confidence judgement, the pipeline 
    Instead of looking at time, this target evaluates the raw choices. It calculates the proportion of trials falling into each confidence rating bin (e.g., ratings 1 through 6), mapped separately for Corrects and Errors.
 
 ### Independent Likelihood Blocks for Multiple Conditions
-If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. 
+If a user maps parameters to experimental conditions (e.g., a `Difficulty` factor), the pipeline splits the data into **Independent Likelihood Blocks**. It calculates the $G^2$ cost for "Hard" trials independently from "Easy" trials (where the probability mass sums to 1.0 within each specific condition), and then sums the costs together. This is exactly the mechanism that creates the comparability issue discussed next.
 
 ------------------------------------------------------------------------
 
@@ -258,16 +274,18 @@ Within this pipeline, specifying these models requires two distinct, independent
 *   **`CONDITIONS`**: Specifies the experimental factors used to partition the empirical data into independent likelihood blocks prior to the cost function calculation.
 *   **`VARYING_PARAMS`**: Specifies which computational parameters are permitted to freely vary across those predefined blocks.
 
-This decoupling is a statistical requirement to ensure that the BIC remain comparable across models.
+This decoupling is a statistical requirement to ensure that the BIC values remain comparable across models.
 
 ### The Problem: Incomparable Likelihood Spaces
 To validly compare two models using BIC or the Likelihood Ratio Chi-Square ($G^2$), both models must be evaluated over the exact same data space and binning architecture. 
 
-If data partitioning is only applied when a parameter varies, the Null model is evaluated against the *marginal* distribution (pooled data), while the Complex model is evaluated against the *conditional* distributions (data split by experimental manipulation). This causes two fatal issues:
-1. **Probability Normalization:** Matching a single parameter to a pooled distribution is a mathematically distinct objective compared to matching parameters to multiple, separately-normalized conditional distributions (where each block's probability mass sums to 1.0 locally). 
-2. **Degrees of Freedom in Binning:** Because the pipeline utilizes dynamic, sample-size-dependent adaptive binning, splitting the data inherently reduces the trial count per cell. This alters the discrete binning resolution (e.g., a pooled dataset might use 10 bins, while split conditions might drop to 4 bins). 
+If data partitioning is only applied when a parameter varies, the Null model is evaluated against the *marginal* distribution (pooled data), while the Complex model is evaluated against the *conditional* distributions (data split by experimental manipulation). This puts the two G2 values on different scales.
 
-Comparing a model evaluated on pooled data to a model evaluated on split data violates the foundational assumptions of model selection. The resulting $G^2$ and BIC values would be evaluated on entirely different scales, making them incomparable.
+G2 is a sum taken over all bins used in the cost function. If the Null model is scored against pooled data (e.g. 10 RT quantile bins total), while the Complex model is scored against data split into Hard and Easy blocks (e.g. 10 bins per block, 20 bins total), the two G2 values are sums over a different number of terms. A G2 computed over 20 bins is not on the same scale as a G2 computed over 10 bins, even if the underlying fit quality per bin is identical — there are simply more terms being added together. Comparing these two G2 values (or the BIC values derived from them) is therefore not a fair comparison: part of any difference you observe could come purely from the change in scale, not from genuine differences in how well each model captures the data.
+
+This problem is compounded by the pipeline's adaptive binning. Because bin resolution is chosen dynamically based on the trial count available in each cell, splitting the data into condition-specific blocks also shrinks the trial count per cell — which can trigger a *coarser* binning scheme on top of having more blocks (e.g. a pooled cell with 400 trials might use 10 bins, while the same cell split into two 200-trial blocks might drop to 6 bins each).
+
+Comparing a model evaluated on pooled data to a model evaluated on split data therefore violates the foundational assumptions of model selection. The resulting G2 and BIC values are computed on different scales, making them incomparable.
 
 ### The Solution: Constant Likelihood Spaces, Flexible Parameters
 By decoupling data partitioning from parameter flexibility, the pipeline ensures valid model selection:
