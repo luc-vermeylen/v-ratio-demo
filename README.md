@@ -274,7 +274,7 @@ Within this pipeline, specifying these models requires two distinct, independent
 *   **`CONDITIONS`**: Specifies the experimental factors used to partition the empirical data into independent likelihood blocks prior to the cost function calculation.
 *   **`VARYING_PARAMS`**: Specifies which computational parameters are permitted to freely vary across those predefined blocks.
 
-This decoupling is a statistical requirement to ensure that the BIC values remain comparable across models.
+This decoupling is to ensure that the BIC values remain comparable across models.
 
 ### The Problem: Incomparable Likelihood Spaces
 To validly compare two models using BIC or the Likelihood Ratio Chi-Square ($G^2$), both models must be evaluated over the exact same data space and binning architecture. 
