@@ -17,10 +17,10 @@ SUBJECT_COL   <- "sub_id"
 
 MODEL_NAME    <- "FCB_cj6" # FCB_cj2 or FCB_cj6 depending on if you have binary or 6 levels of confidence
 
-VARYING_PARAMS <- list() # e.g., list(v = ~ as.factor(Difficulty))
+VARYING_PARAMS <- list() # e.g., list(v = ~ Difficulty)
 FIXED_PARAMS   <- list() # e.g., list(starting_point_confidence = 0.5)
 
-ITER_MAX  <- 10 # 1000 recommended
+ITER_MAX  <- 1000 # 1000 recommended
 USE_CORES <- 1  # 1 for parallel processing within DEoptim, 0 for turning this off
 
 # ==============================================================================
