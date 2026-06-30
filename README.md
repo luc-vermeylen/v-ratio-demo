@@ -1,3 +1,19 @@
+------------------------------------------------------------------------
+
+## Table of Contents
+
+- [Repository Overview](#repository-overview)
+- [Required Data Format](#required-data-format)
+- [Step-by-Step Workflow](#step-by-step-workflow)
+  - [Step 1: Configure & Fit](#step-1-configure--fit-1_run_pipeliner)
+  - [Step 2: Visual Assessment](#step-2-visual-assessment-2_fit_assessr)
+  - [Step 3: Model Comparison](#step-3-model-comparison-3_fit_comparer)
+  - [Step 4: Parameter Statistics](#step-4-parameter-statistics-4_fit_statsr)
+- [Running on an HPC Cluster](#running-on-an-hpc-cluster-ku-leuven--vsc)
+- [The FCB Model Parameters Dictionary](#the-fcb-model-parameters-dictionary)
+- [Details of the Cost Function (G²)](#details-of-the-cost-function-g2)
+- [Good Model Comparison Practices](#good-model-comparison-practices-decoupling-likelihood-from-parameters)
+- [Requirements](#requirements)
 
 ------------------------------------------------------------------------
 
