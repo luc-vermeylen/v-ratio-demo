@@ -1,0 +1,6 @@
+"subject_id","model","cost","bic","aic","n_obs","n_bins","n_free_params","folder"
+"1","FCB_cj6",4811.91425003672,4890.84858632937,4835.91425003672,719,112,12,"/Users/luc/Library/CloudStorage/OneDrive-KULeuven/PostDoc/DDM_Pipeline/v-ratio-demo/results/vratio_full"
+"2","FCB_cj6",3297.78204896304,3376.63264451112,3321.78204896304,714,124,12,"/Users/luc/Library/CloudStorage/OneDrive-KULeuven/PostDoc/DDM_Pipeline/v-ratio-demo/results/vratio_full"
+"3","FCB_cj6",18081.8879733854,18160.822309678,18105.8879733854,719,128,12,"/Users/luc/Library/CloudStorage/OneDrive-KULeuven/PostDoc/DDM_Pipeline/v-ratio-demo/results/vratio_full"
+"4","FCB_cj6",10789.9685882798,10868.8527502833,10813.9685882798,716,144,12,"/Users/luc/Library/CloudStorage/OneDrive-KULeuven/PostDoc/DDM_Pipeline/v-ratio-demo/results/vratio_full"
+"5","FCB_cj6",14991.9527059893,15070.8033015373,15015.9527059893,714,128,12,"/Users/luc/Library/CloudStorage/OneDrive-KULeuven/PostDoc/DDM_Pipeline/v-ratio-demo/results/vratio_full"

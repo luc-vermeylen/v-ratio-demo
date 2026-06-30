@@ -13,9 +13,8 @@
 # ==============================================================================
 
 # --- SETTINGS ---
-# ⚠️ IMPORTANT: Change this to match the exact OUTPUT_FOLDER you used in 1_run_pipeline.R!
-# Otherwise, it will just plot the default dataset.
-OUTPUT_FOLDER <- "testFit" # specify the directory with your fit results here
+# IMPORTANT: Change this to match the exact OUTPUT_FOLDER you used in 1_run_pipeline.R!
+OUTPUT_FOLDER <- "" # specify the directory with your fit results here
 
 library(here)
 library(dplyr)

@@ -682,7 +682,8 @@ calculate_cost <- function(observed, predicted, method = "chisquare", N = 1, eps
 # and calculates independent likelihood blocks to prevent parameter mimicry.
 objective_function <- function(params, observations, param_names, constants, 
                                model_fun, targets, cost_method = "gsquare", 
-                               varying_params = list(), returnFit = 1) {
+                               varying_params = list(), conditions = NULL, 
+                               returnFit = 1) {
   
   # load c++ environment if running on parallel workers
   if (!exists(".cpp_initialized", envir = .GlobalEnv)) {
@@ -698,11 +699,14 @@ objective_function <- function(params, observations, param_names, constants,
   
   # figure out which columns drive the experimental design
   is_regression <- any(sapply(varying_params, function(x) inherits(x, "formula")))
-  cond_cols <- if(length(varying_params) > 0) {
-    if(is_regression) unique(unlist(lapply(varying_params, all.vars))) else unique(unlist(varying_params))
-  } else {
-    NULL
-  }
+  #cond_cols <- if(length(varying_params) > 0) {
+  #  if(is_regression) unique(unlist(lapply(varying_params, all.vars))) else unique(unlist(varying_params))
+  #} else {
+  #  NULL
+  #}
+  # FIX: Use the user-defined CONDITIONS to strictly define the likelihood blocks,
+  # ensuring that Null models and Complex models are evaluated on the exact same bins!
+  cond_cols <- conditions
   
   all_preds <- list() 
   

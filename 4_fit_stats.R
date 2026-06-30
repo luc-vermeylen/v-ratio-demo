@@ -13,7 +13,7 @@
 # 0. DIRECTORY SETUP
 # ==============================================================================
 # --- 1. SETTINGS ---
-OUTPUT_FOLDER   <- "testFit_byManipulation" 
+OUTPUT_FOLDER   <- "" 
 
 # Toggle to TRUE to see the red DEoptim bounds, or FALSE to zoom in on the data
 SHOW_BOUNDARIES <- FALSE     

@@ -42,20 +42,24 @@ POP_SCALE     <- 10
 N_PRED        <- 10000
 
 # Auto-detect experimental conditions to split G-Square likelihood blocks safely
-cond_col_names <- if(length(VARYING_PARAMS) > 0) {
-  unique(unlist(lapply(VARYING_PARAMS, function(x) if(inherits(x, "formula")) all.vars(x) else x)))
-} else { NULL }
+# Ensure all variables used in formulas are actually declared in CONDITIONS
+vars_in_formulas <- unique(unlist(lapply(VARYING_PARAMS, all.vars)))
+missing_conds <- setdiff(vars_in_formulas, CONDITIONS)
+if (length(missing_conds) > 0) {
+  stop(paste("\n[DESIGN ERROR] You used a variable in VARYING_PARAMS that is not listed in CONDITIONS.",
+             "\nPlease add:", paste(missing_conds, collapse = ", "), "to the CONDITIONS list."))
+}
 
 # Define how the cost function should be built
 FIT_TARGETS <- list(
   # Eq 4: Primary RT shape, split by Accuracy
-  list(rt_col = "rt", split_cols = c("acc", cond_col_names), weight = 1),
+  list(rt_col = "rt", split_cols = c("acc", CONDITIONS), weight = 1),
   
   # Eq 5: Confidence RT shape, split by Accuracy
-  list(rt_col = "rtconf", split_cols = c("acc", cond_col_names), weight = 1),
+  list(rt_col = "rtconf", split_cols = c("acc", CONDITIONS), weight = 1),
   
   # Eq 6: Pure confidence proportions
-  list(rt_col = "cj", split_cols = c("acc", "cj", cond_col_names), weight = 1) 
+  list(rt_col = "cj", split_cols = c("acc", "cj", CONDITIONS), weight = 1) 
 )
 
 print(paste("Active Configuration -> Subject:", ifelse(is.null(SUBJECT_IDX), "Group", SUBJECT_IDX)))
@@ -126,8 +130,8 @@ if("cj" %in% names(observations)) {
 }
 
 # Ensure condition columns are factors
-if (!is.null(cond_col_names)) {
-  for (col_name in cond_col_names) {
+if (!is.null(CONDITIONS)) {
+  for (col_name in CONDITIONS) {
     if (col_name %in% names(raw_data)) {
       master_lvls <- sort(unique(raw_data[[col_name]]))
       observations[[col_name]] <- factor(observations[[col_name]], levels = master_lvls)
@@ -192,6 +196,7 @@ result <- DEoptim(
   targets        = FIT_TARGETS, 
   cost_method    = COST_METHOD,  
   varying_params = VARYING_PARAMS,
+  conditions     = CONDITIONS,
   control        = ctrl
 )
 
@@ -255,6 +260,7 @@ final_predictions <- objective_function(
   model_fun      = MODEL_NAME,
   targets        = FIT_TARGETS, 
   varying_params = sim_varying_params,
+  conditions     = CONDITIONS,
   returnFit      = 0 
 )
 
@@ -272,7 +278,8 @@ final_proportions <- objective_function(
   constants      = pred_constants,
   model_fun      = MODEL_NAME,
   targets        = FIT_TARGETS, 
-  varying_params = sim_varying_params, 
+  varying_params = sim_varying_params,
+  conditions     = CONDITIONS, 
   returnFit      = 2
 )
 
@@ -313,7 +320,8 @@ fit_output <- list(
     model          = MODEL_NAME,
     timestamp      = Sys.time(),
     subject        = SUBJECT_ID_VAL,
-    varying_params = VARYING_PARAMS
+    varying_params = VARYING_PARAMS,
+    conditions     = CONDITIONS
   )
 )
 

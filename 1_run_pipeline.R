@@ -11,12 +11,13 @@
 # ==============================================================================
 # 1. USER SETTINGS
 # ==============================================================================
-OUTPUT_FOLDER <- "vratio" # the folder where fits will be stored (the model identifier)
+OUTPUT_FOLDER <- "" # the folder in `/results` where fits will be stored (the model identifier)
 DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # Must be in the /data folder
 SUBJECT_COL   <- "sub_id"
 
 MODEL_NAME    <- "FCB_cj6" # FCB_cj2 or FCB_cj6 depending on if you have binary or 6 levels of confidence
 
+CONDITIONS     <- c() # e.g., c("Difficulty")
 VARYING_PARAMS <- list() # e.g., list(v = ~ Difficulty)
 FIXED_PARAMS   <- list() # e.g., list(starting_point_confidence = 0.5)
 
@@ -40,6 +41,13 @@ SUBJECT_IDX_TO_FIT <- 1  # Only used if RUN_MODE is "single"
 # ==============================================================================
 library(here)
 
+# Safety check
+if (is.null(OUTPUT_FOLDER) || trimws(OUTPUT_FOLDER) == "") {
+  stop("\n[SETTINGS ERROR] You must provide a valid name for OUTPUT_FOLDER in Section 1.\n",
+       "Please give your model a descriptive folder name (e.g., 'vratio_baseline').\n",
+       "This ensures your files are safely isolated from other models.")
+}
+
 # Define absolute paths dynamically
 OUTPUT_DIR  <- here("results", OUTPUT_FOLDER)
 CONFIG_PATH <- here("results", OUTPUT_FOLDER, "config.RData")
@@ -51,7 +59,7 @@ if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
 
 cat(sprintf("\nSaving configuration to %s...\n", CONFIG_PATH))
 save(list = c("OUTPUT_FOLDER", "DATA_NAME", "SUBJECT_COL", "MODEL_NAME", 
-              "VARYING_PARAMS", "FIXED_PARAMS", "ITER_MAX", "USE_CORES"), 
+              "CONDITIONS", "VARYING_PARAMS", "FIXED_PARAMS", "ITER_MAX", "USE_CORES"), 
      file = CONFIG_PATH)
 
 # Load data to count subjects

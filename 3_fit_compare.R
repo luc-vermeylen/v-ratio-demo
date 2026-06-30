@@ -11,8 +11,7 @@
 # They must be located inside the "results/" directory.
 # Set to "ALL" to automatically compare every folder present in the results directory.
 
-FOLDERS_TO_COMPARE <- c("testFit", "testFit_byManipulation") 
-# Example for specific folders: c("test_vratio_1", "test_vratio_2")
+FOLDERS_TO_COMPARE <- c("", "") # Example for specific folders: c("test_vratio_1", "test_vratio_2")
 
 library(here)
 library(dplyr)
