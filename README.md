@@ -250,6 +250,74 @@ If a user maps parameters to experimental conditions (e.g., a `Difficulty` facto
 
 ------------------------------------------------------------------------
 
+## Good Model Comparison Practices: Decoupling Likelihood from Parameters
+
+When conducting model comparisons, we typically evaluate a **Null Model** (where a cognitive process is invariant across experimental conditions) against a more **Complex Model** (where a parameter, such as drift rate, varies across conditions). 
+
+Within this pipeline, specifying these models requires two distinct, independent arguments in `1_run_pipeline.R`:
+*   **`CONDITIONS`**: Specifies the experimental factors used to partition the empirical data into independent likelihood blocks prior to the cost function calculation.
+*   **`VARYING_PARAMS`**: Specifies which computational parameters are permitted to freely vary across those predefined blocks.
+
+This decoupling is a statistical requirement to ensure that the BIC remain comparable across models.
+
+### The Problem: Incomparable Likelihood Spaces
+To validly compare two models using BIC or the Likelihood Ratio Chi-Square ($G^2$), both models must be evaluated over the exact same data space and binning architecture. 
+
+If data partitioning is only applied when a parameter varies, the Null model is evaluated against the *marginal* distribution (pooled data), while the Complex model is evaluated against the *conditional* distributions (data split by experimental manipulation). This causes two fatal issues:
+1. **Probability Normalization:** Matching a single parameter to a pooled distribution is a mathematically distinct objective compared to matching parameters to multiple, separately-normalized conditional distributions (where each block's probability mass sums to 1.0 locally). 
+2. **Degrees of Freedom in Binning:** Because the pipeline utilizes dynamic, sample-size-dependent adaptive binning, splitting the data inherently reduces the trial count per cell. This alters the discrete binning resolution (e.g., a pooled dataset might use 10 bins, while split conditions might drop to 4 bins). 
+
+Comparing a model evaluated on pooled data to a model evaluated on split data violates the foundational assumptions of model selection. The resulting $G^2$ and BIC values would be evaluated on entirely different scales, making them incomparable.
+
+### The Solution: Constant Likelihood Spaces, Flexible Parameters
+By decoupling data partitioning from parameter flexibility, the pipeline ensures valid model selection:
+*   `CONDITIONS` defines the fixed evaluation architecture. It partitions the data into independent conditional likelihood blocks regardless of the model's complexity.
+*   `VARYING_PARAMS` dictates the flexibility the model has to accommodate those blocks.
+
+Under this framework, **the Null model is evaluated condition-by-condition**. However, because its parameters are tied globally, it predicts identical probability distributions for every block. If the empirical data structurally differ across conditions, the invariant parameters of the Null model will fail to capture the local variance, appropriately yielding a high $G^2$ deviance penalty. This allows the Complex model to rightfully win the BIC comparison based purely on explained variance, rather than differences in likelihood architecture.
+
+### Best Practices for Model Comparison
+> **To ensure valid model comparisons, the `CONDITIONS` vector must be identical across all candidate models.** You should always set `CONDITIONS` to reflect the most fine-grained experimental partition used by the most complex model in your comparison set, even for models that do not utilize those factors in `VARYING_PARAMS`. Perhaps you don't know this yet at the start of your fitting, but once you know the most complex model, you can go back to more simple models and make sure you partition them in the same manner as your most complex model.
+
+### Built-in Safety Check: Tracking n_bins
+Because identical likelihood spaces are important for comparison, the pipeline automatically keeps track of the exact number of probability mass bins (n_bins) used during the $G^2$ calculation for every single fit. When you run 3_fit_compare.R, the script displays the average n_bins for each model in the summary table. If the script detects that models were evaluated on a different number of bins (which happens if CONDITIONS were not identical), it will print a warning that your BIC comparisons are potentially invalid.
+
+### Implementation Example
+
+If you wanted to test whether Drift Rate (`v`) is affected by Task Difficulty, you would fit two models in separate folders and then compare them using `3_fit_compare.R`. You must set up `1_run_pipeline.R` like this for each fit:
+
+```r
+# =========================================================
+# FIT 1: THE NULL MODEL (No parameters vary)
+# =========================================================
+OUTPUT_FOLDER <- "vratio_null_model"
+
+# The data is partitioned into independent likelihood blocks by the experimental manipulation.
+CONDITIONS <- c("Difficulty") 
+
+# Parameters are restricted. The model must utilize a single global drift rate across both Difficulty blocks.
+VARYING_PARAMS <- list()
+
+
+# =========================================================
+# FIT 2: THE COMPLEX MODEL (Drift rate varies)
+# =========================================================
+OUTPUT_FOLDER <- "vratio_v_varying"
+
+# The data partitioning structure remains strictly identical. This ensures the G^2 bins match the Null model exactly!
+CONDITIONS <- c("Difficulty")
+
+# The model is permitted to estimate a conditional Drift Rate (v) for Easy and Hard trials respectively.
+VARYING_PARAMS <- list(v = ~ Difficulty)
+
+# =========================================================
+# Because both models were evaluated across identical likelihood 
+# blocks and identical adaptive bins, the resulting Delta-BIC 
+# accurately reflects the statistical evidence for the parameter shift.
+```
+
+------------------------------------------------------------------------
+
 ## Requirements
 The following R packages are required. (If running on the HPC, ensure your conda environment contains these).
 - `here` (for robust directory management)
