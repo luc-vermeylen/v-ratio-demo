@@ -44,7 +44,7 @@ Your dataset **must** contain the following columns exactly as named:
 
 ### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
-Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters vary by experimental conditions and which parameters to fix.
+Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters vary by experimental conditions and which parameters to fix. When the file is ready, save and simply run the file by using ctrl+a and the run button or press the source button in RStudio or type ```source('1_run_pipeline.R')``` in the console.
 
 > **The Importance of the `OUTPUT_FOLDER`**
 > The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, `.pdf` report, and `.csv` summary is saved inside `results/OUTPUT_FOLDER/`. Therefore, the approach is to use one folder for one fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those using the `3_fit_compare.R` script.
@@ -91,7 +91,7 @@ Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeli
 
 ### Step 2: Visual Assessment (`2_fit_assess.R`)
 
-**⚠️ You MUST run this script before comparing models or running statistics!** This script reads all the `.rds` files, aggregates them into a lightweight CSV, and evaluates if the model actually captured human behavior.
+**⚠️ You MUST run this script before comparing models or running statistics!** Make sure to change OUTPUT_FOLDER to match the exact folder you created in Step 1! This script will then read all the `.rds` files in that folder, aggregate them into a lightweight CSV, and provide plots that help you evaluate whether the model actually captured human behavior adequately.
 
 **Outputs:** 
 * **`fit_metrics_summary.csv`**: A spreadsheet of BICs.
