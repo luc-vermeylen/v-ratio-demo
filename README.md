@@ -44,24 +44,25 @@ Your dataset **must** contain the following columns exactly as named:
 
 ### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
-Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters vary by experimental conditions and which parameters to fix. When the file is ready, save and simply run the file by using ctrl+a and the run button or press the source button in RStudio or type ```source('1_run_pipeline.R')``` in the console.
+Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters to vary by experimental conditions and which parameters to fix. When the file is ready, save and simply run the file by using ctrl+a and the run button or press the source button in RStudio or type ```source('1_run_pipeline.R')``` in the console.
 
 > **The Importance of the `OUTPUT_FOLDER`**
 > The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, `.pdf` report, and `.csv` summary is saved inside `results/OUTPUT_FOLDER/`. Therefore, the approach is to use one folder for one fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those using the `3_fit_compare.R` script.
 > Crucially, **all subsequent analysis scripts (Steps 2, 3, and 4) rely entirely on this exact folder name** to locate your data. The idea is to give it a descriptive, unique name representing the current model's hypothesis (e.g., `"vratio_by_emotion"` or `"static_boundaries"`). 
 
-**How to use `VARYING_PARAMS`:** The pipeline uses standard R formula syntax to map parameters to your data columns. 
+**Specify the `CONDITIONS` and `VARYING_PARAMS`:** If you wish to include experimental conditions, you can do so here. In order to guarantee fair model comparison (see more details below), simply follow this rule:
 
-* `list()`: (Empty list). Fits one global parameter per subject.
-* `list(v = ~ as.factor(Difficulty))`: Estimates a separate Drift Rate for each level of "Difficulty".
-* `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`: Fits a full interaction for the v-ratio parameter.
+1. **`CONDITIONS`**: Look at the *most complex* model you plan to test. What experimental factors does it use? List them here as a vector of strings (e.g., `c("Difficulty", "Emotion")`). **You must use this exact same `CONDITIONS` list for every single model you fit in your comparison set**, even for the Null model. This controls the splitting of the Likelihood.
+2. **`VARYING_PARAMS`**: Which parameters are actually allowed to change across those conditions in *this specific fit*? Use R formulas here (e.g., `list(v = ~ as.factor(Difficulty))` or `list(vratio = ~ as.factor(Emotion) * as.factor(Validity))`). To fit a Null model, simply leave this empty as `list()`. This controls the splitting of the Parameters.
 
-**How to use `FIXED_PARAMS`:** Provide a list with parameter = value to fix the parameter to that value.
+> **Quick Rationale:** Thus we separate *splitting the likelihood* (`CONDITIONS`) from *splitting the parameters* (`VARYING_PARAMS`). If your Null model doesn't use the exact same `CONDITIONS` (or splitting of your likelihood) as your Complex model, they are graded on different data bins, and their BICs should not be compared! See the **Good Model Comparison Practices** section below for a detailed explanation.
+
+**Specify the `FIXED_PARAMS`:** Provide a list with parameter = value to fix the parameter to that value.
 
 * `list()`: (Empty list). All parameters are free to vary.
 * `list(starting_point_confidence = 0.5)`. starting point for confidence is fixed to 0.5.
 
-**The different `RUN_MODE`'s:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
+**Select a `RUN_MODE`'s:** Change the `RUN_MODE` variable to choose how to run the pipeline: 
 
 * `"single"`: Runs a test fit on 1 subject so you can check for errors. 
 * `"group"`: Pools all data together to fit one massive "mega-subject" (Group Fit).
