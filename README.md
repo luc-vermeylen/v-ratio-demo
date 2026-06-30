@@ -258,16 +258,18 @@ Within this pipeline, specifying these models requires two distinct, independent
 *   **`CONDITIONS`**: Specifies the experimental factors used to partition the empirical data into independent likelihood blocks prior to the cost function calculation.
 *   **`VARYING_PARAMS`**: Specifies which computational parameters are permitted to freely vary across those predefined blocks.
 
-This decoupling is a statistical requirement to ensure that the BIC remain comparable across models.
+This decoupling is a statistical requirement to ensure that the BIC values remain comparable across models.
 
 ### The Problem: Incomparable Likelihood Spaces
 To validly compare two models using BIC or the Likelihood Ratio Chi-Square ($G^2$), both models must be evaluated over the exact same data space and binning architecture. 
 
-If data partitioning is only applied when a parameter varies, the Null model is evaluated against the *marginal* distribution (pooled data), while the Complex model is evaluated against the *conditional* distributions (data split by experimental manipulation). This causes two fatal issues:
-1. **Probability Normalization:** Matching a single parameter to a pooled distribution is a mathematically distinct objective compared to matching parameters to multiple, separately-normalized conditional distributions (where each block's probability mass sums to 1.0 locally). 
-2. **Degrees of Freedom in Binning:** Because the pipeline utilizes dynamic, sample-size-dependent adaptive binning, splitting the data inherently reduces the trial count per cell. This alters the discrete binning resolution (e.g., a pooled dataset might use 10 bins, while split conditions might drop to 4 bins). 
+If data partitioning is only applied when a parameter varies, the Null model is evaluated against the *marginal* distribution (pooled data), while the Complex model is evaluated against the *conditional* distributions (data split by experimental manipulation). This puts the two G2 values on different scales.
 
-Comparing a model evaluated on pooled data to a model evaluated on split data violates the foundational assumptions of model selection. The resulting $G^2$ and BIC values would be evaluated on entirely different scales, making them incomparable.
+G2 is a sum taken over all bins used in the cost function. If the Null model is scored against pooled data (e.g. 10 RT quantile bins total), while the Complex model is scored against data split into Hard and Easy blocks (e.g. 10 bins per block, 20 bins total), the two G2 values are sums over a different number of terms. A G2 computed over 20 bins is not on the same scale as a G2 computed over 10 bins, even if the underlying fit quality per bin is identical — there are simply more terms being added together. Comparing these two G2 values (or the BIC values derived from them) is therefore not a fair comparison: part of any difference you observe could come purely from the change in scale, not from genuine differences in how well each model captures the data.
+
+This problem is compounded by the pipeline's adaptive binning. Because bin resolution is chosen dynamically based on the trial count available in each cell, splitting the data into condition-specific blocks also shrinks the trial count per cell — which can trigger a *coarser* binning scheme on top of having more blocks (e.g. a pooled cell with 400 trials might use 10 bins, while the same cell split into two 200-trial blocks might drop to 6 bins each).
+
+Comparing a model evaluated on pooled data to a model evaluated on split data therefore violates the foundational assumptions of model selection. The resulting G2 and BIC values are computed on different scales, making them incomparable.
 
 ### The Solution: Constant Likelihood Spaces, Flexible Parameters
 By decoupling data partitioning from parameter flexibility, the pipeline ensures valid model selection:
