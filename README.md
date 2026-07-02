@@ -37,6 +37,7 @@ To help you get started, **we have included the original datasets from Herregods
 - 📁 **`results/`**: Each fit will get a new folder here where configuration (config.Rdata), fit information (.rds), plots (.pdf) and summaries (.csv) will appear.
 - 📁 **`R/`**: Backend C++ simulation code and R helper functions. *(Do not edit these).*
 - 📁 **`hpc/`**: Slurm scripts (made for the KU Leuven HPC infrastructure). Detailed information on how to run this on the hpc can be found in below and within `hpc/batch_fit.slurm`.
+- 📄 **`v-ratio-demo.Rproj`**: Start RStudio using the project file to make sure all paths are set up correctly.
 - 📄 **`1_run_pipeline.R`**: The main file for running a fit. Configure settings and launch fits here.
 - 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
 - 📄 **`3_fit_compare.R`**: Compares different models to find the best fit via BIC.
@@ -60,7 +61,7 @@ Your dataset **must** contain the following columns exactly as named:
 
 ### Step 1: Configure & Fit (`1_run_pipeline.R`)
 
-Open Rstudio using the `.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters to vary by experimental conditions and which parameters to fix. When the file is ready, save and simply run the file by using ctrl+a and the run button or press the source button in RStudio or type ```source('1_run_pipeline.R')``` in the console.
+Open Rstudio using the `v-ratio-demo.Rproj` (to set the paths correctly), open `1_run_pipeline.R` and adjust the User Settings. You will specify your dataset, the `OUTPUT_FOLDER` for the results, your model (`FCB_cj2` or `FCB_cj6`, depending on your number of confidence response options), which parameters to vary by experimental conditions and which parameters to fix. When the file is ready, save and simply run the file by using ctrl+a and the run button or press the source button in RStudio or type ```source('1_run_pipeline.R')``` in the console.
 
 > **The Importance of the `OUTPUT_FOLDER`**
 > The `OUTPUT_FOLDER` (which will show up within the `/results/` folder) is the most critical organizational setting in the entire pipeline. It acts as the permanent "home" for your specific model configuration. When the pipeline runs, every `.rds` file, `.pdf` report, and `.csv` summary is saved inside `results/OUTPUT_FOLDER/`. Therefore, the approach is to use one folder for one fit. You can create different folders with different types of fit (e.g., conditions varying or different parameters fixed) and then later compare those using the `3_fit_compare.R` script.
