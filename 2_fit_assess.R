@@ -44,7 +44,7 @@ for (f in files) {
   }
   
   sub_id   <- as.character(fit$info$subject)
-  fit_cond <- if(!is.null(fit$info$condition)) as.character(fit$info$condition) else "All"
+  fit_cond <- if(!is.null(fit$info$conditions)) paste(fit$info$conditions, collapse = "_") else "All"
   fname    <- basename(f)
   
   try({
