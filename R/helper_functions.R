@@ -15,26 +15,32 @@ model_params <- list(
   "FCB_cj2" = list(
     a                         = c(0.3, 4),
     v                         = c(0, 3),
-    a_slope                   = c(0, 0),     # fixed to 0 (no decisional boundary collapse)
+    a_slope                   = c(0, 3),
     ter                       = c(0, 1.5),
     a2                        = c(0, 20),
     vratio                    = c(0.2, 5),
     a2_slope_upper            = c(0, 20),
     a2_slope_lower            = c(0, 20),
     ter2                      = c(-1.5, 1.5),
-    starting_point_confidence = c(0, 1)
+    starting_point_confidence = c(0, 1),
+    sv                        = c(0, 2),   
+    st                        = c(0, 0.5), 
+    sz                        = c(0, 0.5)  
   ),
   "FCB_cj6" = list(
     a                         = c(0.3, 4),
     v                         = c(0, 3),
-    a_slope                   = c(0, 0),     # fixed to 0 (no decisional boundary collapse)
+    a_slope                   = c(0, 3),  
     ter                       = c(0, 1.5),
     a2                        = c(0, 20),
     vratio                    = c(0.2, 5),
     a2_slope_upper            = c(0, 20),
     a2_slope_lower            = c(0, 20),
     ter2                      = c(-1.5, 1.5),
-    starting_point_confidence = c(0, 1)
+    starting_point_confidence = c(0, 1),
+    sv                        = c(0, 2),   
+    st                        = c(0, 0.5), 
+    sz                        = c(0, 0.5)  
   )
 )
 

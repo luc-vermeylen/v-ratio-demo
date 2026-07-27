@@ -19,7 +19,7 @@ MODEL_NAME    <- "FCB_cj6" # FCB_cj2 or FCB_cj6 depending on if you have binary 
 
 CONDITIONS     <- c() # e.g., c("Difficulty")
 VARYING_PARAMS <- list() # e.g., list(v = ~ Difficulty)
-FIXED_PARAMS   <- list() # e.g., list(starting_point_confidence = 0.5)
+FIXED_PARAMS <- list(a_slope = 0, sv = 0, st = 0, sz = 0) # by default, trial-by-trial variability parameters (sv, st, sz) and boundary collapse (a_slope) are turned off 
 
 ITER_MAX  <- 1000 # 1000 recommended
 USE_CORES <- 1  # 1 for parallel processing within DEoptim, 0 for turning this off

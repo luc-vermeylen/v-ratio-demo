@@ -14,37 +14,59 @@ DataFrame FCB_cj2(
     double a, double v, double a_slope, double ter, 
     double a2, double vratio, double a2_slope_upper, double a2_slope_lower, 
     double ter2, double starting_point_confidence,
+    double sv = 0, double st = 0, double sz = 0,
     double s = 1, double dt = 0.001, double tmax = 10.0, unsigned long seed = 0) {
   
-  // Parallel RNG Setup
   RNGScope scope; 
   if (seed != 0) zigg.setSeed(seed);
   
   NumericMatrix DATA(ntrials, 4);
-  double z = 0.5;
+  double z_base = 0.5;
   
   for (int i = 0; i < ntrials; i++) {
-    // 1. Decisional processing
-    double evidence = a * z;
+    
+    // --- TRIAL-BY-TRIAL VARIABILITY ---
+    // Drift Rate Variability (Normal distribution: N(v, sv))
+    double trial_v = v;
+    if (sv > 0) trial_v = v + sv * zigg.norm();
+    
+    // Starting Point Variability (Uniform distribution width sz around z_base)
+    double trial_start = a * z_base;
+    if (sz > 0) {
+      trial_start += sz * (R::runif(0.0, 1.0) - 0.5);
+      // Clamp to boundaries just in case sz is very large
+      if (trial_start > a) trial_start = a;
+      if (trial_start < 0) trial_start = 0;
+    }
+    
+    // Non-Decision Time Variability (Uniform distribution width st around ter)
+    double trial_ter = ter;
+    if (st > 0) {
+      trial_ter += st * (R::runif(0.0, 1.0) - 0.5);
+      if (trial_ter < 0) trial_ter = 0; // Prevent negative physical time
+    }
+    
+    // --- DECISIONAL PROCESSING ---
+    double evidence = trial_start;
     double t = 0;
     int cor = -1;
-     
+    
     while (evidence <= a && evidence >= 0) {
       t += dt;
-      evidence += v * dt + s * std::sqrt(dt) * zigg.norm();
+      evidence += trial_v * dt + s * std::sqrt(dt) * zigg.norm();
       
       if (evidence >= a - t * a_slope) {
         cor = 1; break;
-      } else if (evidence <= 0 + t * a_slope) { 
+      } else if (evidence <= 0 + t * a_slope) {
         cor = 0; break;
-      } 
-      if (t >= tmax) break;
+      }
+      if (t >= tmax) break; // Safety break
     }
+    
+    DATA(i, 0) = t + trial_ter; // rt
+    DATA(i, 1) = cor;           // acc
      
-    DATA(i, 0) = t + ter; // rt
-    DATA(i, 1) = cor;     // acc
-     
-    // 2. Post-decisional processing (Confidence)
+     // --- POST-DECISIONAL PROCESSING (Confidence) ---
     double t2 = 0;
     double v_post = v * vratio;
     evidence = a2 * starting_point_confidence;
@@ -83,37 +105,55 @@ DataFrame FCB_cj6(
     double a, double v, double a_slope, double ter, 
     double a2, double vratio, double a2_slope_upper, double a2_slope_lower, 
     double ter2, double starting_point_confidence,
+    double sv = 0, double st = 0, double sz = 0,
     double s = 1, double dt = 0.001, double tmax = 10.0, unsigned long seed = 0) {
   
-  // Parallel RNG Setup
   RNGScope scope; 
   if (seed != 0) zigg.setSeed(seed);
   
   NumericMatrix DATA(ntrials, 4);
-  double z = 0.5;
+  double z_base = 0.5;
   
   for (int i = 0; i < ntrials; i++) {
-    // 1. Decisional processing
-    double evidence = a * z;
+    
+    // --- TRIAL-BY-TRIAL VARIABILITY ---
+    double trial_v = v;
+    if (sv > 0) trial_v = v + sv * zigg.norm();
+    
+    double trial_start = a * z_base;
+    if (sz > 0) {
+      trial_start += sz * (R::runif(0.0, 1.0) - 0.5);
+      if (trial_start > a) trial_start = a;
+      if (trial_start < 0) trial_start = 0;
+    }
+    
+    double trial_ter = ter;
+    if (st > 0) {
+      trial_ter += st * (R::runif(0.0, 1.0) - 0.5);
+      if (trial_ter < 0) trial_ter = 0;
+    }
+    
+    // --- DECISIONAL PROCESSING ---
+    double evidence = trial_start;
     double t = 0;
     int cor = -1;
-     
+    
     while (evidence <= a && evidence >= 0) {
       t += dt;
-      evidence += v * dt + s * std::sqrt(dt) * zigg.norm();
+      evidence += trial_v * dt + s * std::sqrt(dt) * zigg.norm();
       
       if (evidence >= a - t * a_slope) {
         cor = 1; break;
-      } else if (evidence <= 0 + t * a_slope) { 
+      } else if (evidence <= 0 + t * a_slope) {
         cor = 0; break;
-      } 
+      }
       if (t >= tmax) break;
     }
+    
+    DATA(i, 0) = t + trial_ter; 
+    DATA(i, 1) = cor;    
      
-    DATA(i, 0) = t + ter; // rt
-    DATA(i, 1) = cor;     // acc
-     
-    // 2. Post-decisional processing (Confidence)
+     // --- POST-DECISIONAL PROCESSING (Confidence) ---
     double t2 = 0;
     double v_post = v * vratio;
     evidence = a2 * starting_point_confidence;

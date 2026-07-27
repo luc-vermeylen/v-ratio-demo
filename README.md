@@ -215,7 +215,9 @@ done
 
 ## The FCB Model Parameters Dictionary
 
-The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by default in the helper functions). Parameter boundaries can be changed in R/helper_functions.R, in the model_params list.
+The models rely on the following parameters. Note: `a_slope` and trial-by-trial variability parameters `sv`, `st`, and `sz` are fixed to 0 by default in `1_run_pipeline.R` to keep models simple). 
+
+Parameter boundaries can be changed manually in `R/helper_functions.R`, in the `model_params` list.
 
 | Parameter | Stage | Description |
 |:-----------------------|:-----------------------|:-----------------------|
@@ -223,6 +225,9 @@ The models rely on the following parameters. (Note: `a_slope` is fixed to 0 by d
 | **`v`** | Decision | **Drift Rate**: The speed of information accumulation for the primary choice. |
 | **`ter`** | Decision | **Non-Decision Time**: Encoding and motor execution time (seconds). |
 | **`a_slope`** | Decision | **Decision Boundary Slope**: How fast the decision boundaries collapse. |
+| **`sv`** | Decision | **Drift Rate Variability**: Standard deviation of Normal trial-by-trial drift rate noise. |
+| **`st`** | Decision | **Non-Decision Time Variability**: Range of trial-by-trial uniform noise on `ter`. |
+| **`sz`** | Decision | **Starting Point Variability**: Range of trial-by-trial uniform noise on the starting point. |
 | **`a2`** | Confidence | **Confidence Boundary**: The total evidence space for the confidence judgment. |
 | **`vratio`** | Confidence | **V-Ratio**: The ratio of post-decisional drift to primary drift ($v_{post} = v \times vratio$). |
 | **`ter2`** | Confidence | **Confidence Non-Decision Time**: Delay specific to confidence reporting. Can be negative, implying metacognitive processing starts during the primary motor execution. |
