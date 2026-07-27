@@ -219,16 +219,9 @@ fix_parameters <- function(config, overrides) {
 
 # Helper to clean R beta names for consistent lookup
 clean_beta_names <- function(raw_names, p_prefix, formula) {
-  clean <- gsub("\\(Intercept\\)", "Int", raw_names)
-  clean <- gsub("as.factor\\(", "", clean) 
+  clean <- gsub("\\(Intercept\\)", "Int", raw_names) # Replace Intercept
+  clean <- gsub("as.factor\\(", "", clean) # Remove the "as.factor()" wrapper if the user typed it
   clean <- gsub("\\)", "", clean)
-  
-  vars <- all.vars(formula)
-  for (v in vars) {
-    stripped <- gsub(paste0("^", v), "", clean)
-    clean <- ifelse(stripped == "" | stripped == ":", clean, stripped)
-    clean <- gsub(paste0(":", v), ":", clean)
-  }
   return(paste0(p_prefix, ":", clean))
 }
 
@@ -248,7 +241,6 @@ clean_beta_names <- function(raw_names, p_prefix, formula) {
 # hybrid parameter plucker
 # calculates regression math or does string lookup depending on the formula
 pluck_params <- function(best_params, constants, current_cell, varying_params, model_name) {
-  
   p_base_names <- names(get_model_params(model_name))
   all_p <- as.list(c(best_params, unlist(constants)))
   out <- list()
@@ -262,20 +254,21 @@ pluck_params <- function(best_params, constants, current_cell, varying_params, m
         X <- model.matrix(mapping, current_cell)
         clean_b_names <- clean_beta_names(colnames(X), p, mapping)
         
-        # Check of we de betas wel echt hebben in de lijst
         if (all(clean_b_names %in% names(all_p))) {
           p_betas <- unlist(all_p[clean_b_names])
           out[[p]] <- sum(X[1, ] * p_betas)
         } else {
-          # FALLBACK: Als betas missen, probeer de cel-naam direct (voor geconverteerde data)
-          lvl_val <- paste(as.character(unlist(current_cell[, all.vars(mapping), drop=FALSE])), collapse=".")
-          p_ext <- paste0(p, ":", lvl_val)
+          # FALLBACK
+          p_vars <- all.vars(mapping)
+          cell_strings <- paste(p_vars, unlist(current_cell[, p_vars, drop = FALSE]), sep = "_")
+          p_ext <- paste0(p, ":", paste(cell_strings, collapse = "."))
           out[[p]] <- if (!is.null(all_p[[p_ext]])) all_p[[p_ext]] else all_p[[p]]
         }
       } else {
         # --- CELL MEAN ---
-        lvl_val <- paste(as.character(unlist(current_cell[, mapping, drop=FALSE])), collapse=".")
-        p_ext <- paste0(p, ":", lvl_val)
+        p_vars <- mapping
+        cell_strings <- paste(p_vars, unlist(current_cell[, p_vars, drop = FALSE]), sep = "_")
+        p_ext <- paste0(p, ":", paste(cell_strings, collapse = "."))
         out[[p]] <- if (!is.null(all_p[[p_ext]])) all_p[[p_ext]] else all_p[[p]]
       }
     } else {
@@ -283,7 +276,7 @@ pluck_params <- function(best_params, constants, current_cell, varying_params, m
       out[[p]] <- if (!is.null(all_p[[p]])) all_p[[p]] else constants[[p]]
     }
     
-    # Noodrem
+    # Safety Check
     if (is.null(out[[p]])) {
       if (p == "alpha") { out[[p]] <- 2 } 
       else { stop(paste("Parameter lookup failed for:", p)) }
@@ -744,8 +737,8 @@ objective_function <- function(params, observations, param_names, constants,
         if (p %in% names(varying_params)) {
           mapping <- varying_params[[p]]
           
-          # branch a: regression (linear predictor)
           if (inherits(mapping, "formula")) {
+            # branch a: regression (linear predictor)
             clean_b_names <- clean_beta_names(colnames(X_list[[p]]), p, mapping)
             p_betas <- all_p_vec[clean_b_names]
             
@@ -759,11 +752,12 @@ objective_function <- function(params, observations, param_names, constants,
             }
             current_sim_args[[p]] <- val
             
-            # branch b: cell-mean (direct lookup)
+            
           } else {
-            lvls_in_cell <- sapply(current_cell[, mapping, drop = FALSE], as.character)
-            lvl_val <- paste(lvls_in_cell, collapse = ".")
-            p_ext <- paste0(p, ":", lvl_val)
+            # branch b: cell-mean (direct lookup)
+            p_vars <- mapping
+            cell_strings <- paste(p_vars, unlist(current_cell[, p_vars, drop = FALSE]), sep = "_")
+            p_ext <- paste0(p, ":", paste(cell_strings, collapse = "."))
             current_sim_args[[p]] <- all_p_vec[[p_ext]]
           }
         } else {

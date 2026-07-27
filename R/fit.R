@@ -232,7 +232,8 @@ if (is_regression) {
         p_formula <- VARYING_PARAMS[[p]]
         p_vars <- all.vars(p_formula)
         if (length(p_vars) > 0) {
-          p_lvl_val <- paste(unlist(current_cell[, p_vars, drop = FALSE]), collapse = ".")
+          cell_strings <- paste(p_vars, unlist(current_cell[, p_vars, drop = FALSE]), sep = "_")
+          p_lvl_val <- paste(cell_strings, collapse = ".")
           reconstructed_params[paste0(p, ":", p_lvl_val)] <- p_lvl[[p]]
         } else {
           reconstructed_params[p] <- p_lvl[[p]]
