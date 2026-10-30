@@ -1,0 +1,11 @@
+"Parameter","N_Subjects","Pearson_r","Spearman_rho","RMSE","Bias","Slope","R2"
+"a",2,NA,NA,0.352,0.143,NA,NA
+"v_Easy",2,NA,NA,0.098,-0.059,NA,NA
+"ter",2,NA,NA,0.124,-0.123,NA,NA
+"a2",2,NA,NA,8.295,8.195,NA,NA
+"vratio",2,NA,NA,2.321,-1.597,NA,NA
+"a2_slope_upper",2,NA,NA,13.319,-13.294,NA,NA
+"a2_slope_lower",2,NA,NA,9.113,4.345,NA,NA
+"ter2",2,NA,NA,0.819,-0.806,NA,NA
+"starting_point_confidence",2,NA,NA,0.218,-0.197,NA,NA
+"v_Hard",2,NA,NA,0.525,0.495,NA,NA

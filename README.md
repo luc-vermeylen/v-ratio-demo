@@ -9,6 +9,8 @@
   - [Step 2: Visual Assessment](#step-2-visual-assessment-2_fit_assessr)
   - [Step 3: Model Comparison](#step-3-model-comparison-3_fit_comparer)
   - [Step 4: Parameter Statistics](#step-4-parameter-statistics-4_fit_statsr)
+  - [Step 5: Parameter Recovery Simulation (`5_recovery_simulate.R`)](#step-5-parameter-recovery-simulation-5_recovery_simulater)
+  - [Step 6: Parameter Recovery Assessment (`6_recovery_assess.R`)](#step-6-parameter-recovery-assessment-6_recovery_assessr)
 - [Running on an HPC Cluster](#running-on-an-hpc-cluster-ku-leuven--vsc)
 - [The FCB Model Parameters Dictionary](#the-fcb-model-parameters-dictionary)
 - [Details of the Cost Function (G²)](#details-of-the-cost-function-g2)
@@ -42,6 +44,8 @@ To help you get started, **we have included the original datasets from Herregods
 - 📄 **`2_fit_assess.R`**: Aggregates fits and generates behavioral diagnostic plots.
 - 📄 **`3_fit_compare.R`**: Compares different models to find the best fit via BIC.
 - 📄 **`4_fit_stats.R`**: Runs statistics (T-Tests, ANOVAs) and generates parameter plots.
+- 📄 **`5_recovery_simulate.R`**: Generates synthetic datasets with known ground-truth parameters.
+- 📄 **`6_recovery_assess.R`**: Assesses parameter identifiability, correlations, RMSE, and bias against ground truth.
 
 ------------------------------------------------------------------------
 
@@ -135,6 +139,51 @@ Once you have selected your winning model, this script automatically extracts an
 * **Global Parameters Plot**: Generates boxplots of shared ("global") parameters. You can optionally set `SHOW_BOUNDARIES <- TRUE` to plot them against the DEoptim optimization boundaries. This is useful for checking for "boundary swarming", ensuring the optimizer didn't get trapped against the parameter boundaries (otherwise this suggests that a larger parameter space is warranted). 
 * **Individual Trends & Group Means**: Generates Spaghetti plots and summary plots for any `VARYING_PARAMS`.
 * **`parameter_anova_results.csv`**: Automatically runs T-Tests or Repeated-Measures ANOVAs on your varying parameters and saves the T/F-values, p-values, and effect sizes.
+
+### Step 5: Parameter Recovery Simulation (`5_recovery_simulate.R`)
+
+Before interpreting empirical findings, a **Parameter Recovery study** must be conducted to establish that the model's parameters are identifiable and can be recovered without trade-offs.
+
+#### 1. Parameter Generation Scenarios (`PARAM_SOURCE`)
+You can choose among three standard generation methods in Section 1:
+* **Scenario 1: Global Bounds (`PARAM_SOURCE <- "deoptim"`):**  
+  Samples uniformly across the entire search space defined by the DEoptim boundaries in `R/helper_functions.R` (e.g., $a \in [0.3, 4.0]$, $v \in [0, 3.0]$, $vratio \in [0.2, 5.0]$).
+* **Scenario 2: Custom Bounds with Fallback (`PARAM_SOURCE <- "custom"`):**  
+  Allows you to define tighter or specific intervals for parameters of interest (via `CUSTOM_BOUNDS`). Any parameter omitted automatically falls back to its default DEoptim search bound.
+* **Scenario 3: Empirical Envelope (`PARAM_SOURCE <- "empirical"`):**  
+  Derives a realistic bounding box from a previous empirical fit. To prevent poor fits or optimization penalties from inflating the range, it automatically applies:
+  * *Cost outlier filtering:* Discards fits with penalties ($10^9$) or costs exceeding $\text{median} + 3 \times \text{IQR}$.
+  * *Percentile trimming:* Binds parameters between the 5th and 95th percentiles (`EMPIRICAL_QUANTILE_TRIM`).  
+  This provides a tailored reality test, demonstrating that the model recovers parameters in the psychological regime where your actual human participants operate.
+
+#### 2. Experimental Design Options
+You can structure the synthetic experiment using:
+* **Option A (Template Mirroring):** Point `TEMPLATE_DATA` to an empirical CSV in `/data`. The script will clone that exact trial count, condition distribution, and factor structure per subject.
+* **Option B (Fixed Design from Scratch):** Set `TEMPLATE_DATA <- NULL` and specify `CONDITION_LEVELS` and `TRIALS_PER_CELL` to generate a balanced factorial design from scratch.
+
+**Outputs:**
+* **`data/<DATA_NAME>.csv`**: A synthetic dataset formatted identically to empirical data.
+* **`results/<OUTPUT_FOLDER>/ground_truth.csv`**: An answer key logging the true parameter values for each subject.
+
+---
+
+### Step 6: Parameter Recovery Assessment (`6_recovery_assess.R`)
+
+Once you have simulated synthetic data (Step 5) and fitted it through the standard pipeline (Steps 1 & 2), this script evaluates recovery fidelity.
+
+**The Full Recovery Workflow:**
+1. Run `5_recovery_simulate.R` to generate synthetic data (e.g., `N_SUBJECTS = 30`).
+2. Open `1_run_pipeline.R`, point `DATA_NAME` and `OUTPUT_FOLDER` to your synthetic files, and run in `"local_batch"` or `"hpc"` mode.
+3. Run `2_fit_assess.R` to aggregate fits into `master_parameters_report.csv`.
+4. Open `6_recovery_assess.R`, set `OUTPUT_FOLDER`, and source the file.
+
+**Outputs:**
+* **`parameter_recovery_report.pdf`**:
+  * *Individual Recovery Scatter Plots:* Ground truth ($x$) vs. estimated ($y$) with an identity line ($y = x$), regression trend line, and text annotations for Pearson $r$, RMSE, and Bias.
+  * *Parameter Confusion / Leakage Matrix:* A correlation heatmap between all true and recovered parameters to detect cross-parameter trade-offs.
+* **`parameter_recovery_metrics.csv`**: A spreadsheet of Pearson $r$, Spearman $\rho$, RMSE, Bias, regression slope, and $R^2$ per parameter.
+
+---
 
 ------------------------------------------------------------------------
 
