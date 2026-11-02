@@ -6,12 +6,13 @@ library(patchwork)
 library(dplyr)
 library(tidyr)
 
-#### PARAMETER FUNCTIONS ####
+#### PARAMETER FUNCTIONS & MODEL REGISTRY ####
 
 # This list defines the master boundaries for all models in the pipeline.
 # Each entry contains a lower and upper bound c(min, max).
 # For parameters you wish to keep constant across all studies, set min == max.
 model_params <- list(
+  # --- 1. CONFIDENCE MODELS (Scale: Seconds, s = 1, dt = 0.001) ---
   "FCB_cj2" = list(
     a                         = c(0.3, 4),
     v                         = c(0, 3),
@@ -41,11 +42,70 @@ model_params <- list(
     sv                        = c(0, 2),   
     st                        = c(0, 0.5), 
     sz                        = c(0, 0.5)  
+  ),
+  # --- 2. CONFLICT MODELS (Scale: Milliseconds, s = 4, dt = 1) ---
+  "DMC" = list(
+    v_c      = c(0, 1.5),   # Controlled drift rate
+    a        = c(10, 150),  # Boundary separation (total = 2a)
+    ter_mean = c(100, 800), # Mean non-decision time (ms)
+    amp      = c(0, 130),   # Amplitude of gamma pulse
+    tau      = c(10, 450),  # Time-to-peak of gamma pulse (ms)
+    beta     = c(2, 10),    # Starting point variability shape (0 = off)
+    ter_sd   = c(0, 200),   # Non-decision time variability SD (ms)
+    alpha    = c(2, 2)      # Gamma pulse shape (fixed at 2)
+  ),
+  # --- 3. STANDARD DDM (Scale: Seconds, s = 1, dt = 0.001) ---
+  "DDM" = list(
+    v   = c(0, 3),     # Drift rate
+    a   = c(0.3, 4),   # Boundary separation
+    ter = c(0, 1.5),   # Non-decision time
+    z   = c(0.5, 0.5), # Starting point bias (fixed at 0.5)
+    sv  = c(0, 2),     # Drift rate variability SD
+    st  = c(0, 0.5),   # Non-decision time variability range
+    sz  = c(0, 0.5)    # Starting point variability range
   )
 )
 
-# Aliases: Allow different names to point to the same parameter set
-# model_params[["DDM_metaconflict_bounds_fast"]] <- model_params[["DDM_metaconflict_bounds"]]
+# Central Model Registry:
+# Informs the pipeline about data requirements, likelihood targets, and default constants.
+get_model_info <- function(model_name) {
+  registry <- list(
+    "FCB_cj2" = list(
+      has_conflict   = FALSE,
+      has_confidence = TRUE,
+      time_unit      = "seconds",
+      default_s      = 1,
+      default_dt     = 0.001
+    ),
+    "FCB_cj6" = list(
+      has_conflict   = FALSE,
+      has_confidence = TRUE,
+      time_unit      = "seconds",
+      default_s      = 1,
+      default_dt     = 0.001
+    ),
+    "DMC" = list(
+      has_conflict   = TRUE,
+      has_confidence = FALSE,
+      time_unit      = "milliseconds",
+      default_s      = 4,
+      default_dt     = 1
+    ),
+    "DDM" = list(
+      has_conflict   = FALSE,
+      has_confidence = FALSE,
+      time_unit      = "seconds",
+      default_s      = 1,
+      default_dt     = 0.001
+    )
+  )
+  
+  if (!model_name %in% names(registry)) {
+    stop(paste0("\n[MODEL ERROR] Model '", model_name, "' is not registered.",
+                "\nAvailable registered models are: ", paste(names(registry), collapse = ", ")))
+  }
+  return(registry[[model_name]])
+}
 
 # Helper to retrieve the parameter list for a specific model name.
 get_model_params <- function(model_name) {
@@ -1370,8 +1430,10 @@ plot_delta <- function(obs,
   x_lim <- range(all_x, na.rm = TRUE)
   y_lim <- range(all_y, na.rm = TRUE) + c(-0.02, 0.02)
   
+  time_unit_label <- if (max(all_x, na.rm = TRUE) > 20) "ms" else "s"
+  
   plot(1, type = "n", xlim = x_lim, ylim = y_lim,
-       xlab = "Mean Reaction Time (s)", 
+       xlab = paste0("Mean Reaction Time (", time_unit_label, ")"), 
        ylab = expression(Delta ~ "RT (Incongruent - Congruent)"),
        main = main_title, las = 1)
   

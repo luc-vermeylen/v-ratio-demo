@@ -1,5 +1,5 @@
 # ==============================================================================
-# V-RATIO FITTING PIPELINE 
+# GENERAL FITTING PIPELINE 
 # ==============================================================================
 # Directions:
 # 1. Edit your settings in Section 1.
@@ -11,23 +11,39 @@
 # ==============================================================================
 # 1. USER SETTINGS
 # ==============================================================================
-OUTPUT_FOLDER <- "" # the folder in `/results` where fits will be stored (the model identifier)
+OUTPUT_FOLDER <- "" # The folder in /results where fits will be stored
 DATA_NAME     <- "Exp2_cj6_Herregods2025.csv" # Must be in the /data folder
 SUBJECT_COL   <- "sub_id"
 
-MODEL_NAME    <- "FCB_cj6" # FCB_cj2 or FCB_cj6 depending on if you have binary or 6 levels of confidence
+# MODEL SELECTION:
+# - Confidence models: "FCB_cj2" (binary) or "FCB_cj6" (6-point scale)
+# - Conflict models:   "DMC" (Diffusion Model for Conflict tasks)
+# - Standard models:   "DDM" (Classic drift diffusion)
+MODEL_NAME    <- "FCB_cj6"
 
+# EXPERIMENTAL DESIGN:
 CONDITIONS     <- c() # e.g., c("Difficulty")
-VARYING_PARAMS <- list() # e.g., list(v = ~ Difficulty)
-FIXED_PARAMS <- list(a_slope = 0, sv = 0, st = 0, sz = 0) # by default, trial-by-trial variability parameters (sv, st, sz) and boundary collapse (a_slope) are turned off 
+VARYING_PARAMS <- list() # e.g., list(v = ~ Difficulty) or list(amp = ~ Distance)
+
+# FIXED PARAMETERS:
+# Provide list(ParamName = Value) to lock parameters to constants.
+# Defaults:
+# - For FCB: list(a_slope = 0, sv = 0, st = 0, sz = 0)
+# - For DMC: list(alpha = 2, beta = 2.5, ter_sd = 20) or list(tau = 64)
+FIXED_PARAMS <- list(a_slope = 0, sv = 0, st = 0, sz = 0) 
+
+# OPTIONAL SIMULATION CONSTANTS OVERRIDE:
+# Leave as list() to automatically use the model's standard scale:
+# - DMC: s = 4, dt = 1 (milliseconds)
+# - FCB/DDM: s = 1, dt = 0.001 (seconds)
+SIM_CONSTANTS <- list() # e.g., list(ntrials = 5000, s = 4, dt = 1)
 
 ITER_MAX  <- 1000 # 1000 recommended
-USE_CORES <- 1  # 1 for parallel processing within DEoptim, 0 for turning this off
+USE_CORES <- 1    # 1 for parallel processing within DEoptim, 0 for single core
 
 # ==============================================================================
 # 2. EXECUTION MODE
 # ==============================================================================
-# Choose one of the following:
 # "single"      -> Fits ONLY the specific subject index defined below.
 # "group"       -> Fits all data merged at the group level.
 # "local_batch" -> Fits ALL subjects sequentially on this computer.
@@ -41,28 +57,24 @@ SUBJECT_IDX_TO_FIT <- 1  # Only used if RUN_MODE is "single"
 # ==============================================================================
 library(here)
 
-# Safety check
 if (is.null(OUTPUT_FOLDER) || trimws(OUTPUT_FOLDER) == "") {
   stop("\n[SETTINGS ERROR] You must provide a valid name for OUTPUT_FOLDER in Section 1.\n",
-       "Please give your model a descriptive folder name (e.g., 'vratio_baseline').\n",
-       "This ensures your files are safely isolated from other models.")
+       "Please give your model a descriptive folder name (e.g., 'dmc_baseline' or 'vratio_null').")
 }
 
-# Define absolute paths dynamically
 OUTPUT_DIR  <- here("results", OUTPUT_FOLDER)
 CONFIG_PATH <- here("results", OUTPUT_FOLDER, "config.RData")
 DATA_FILE   <- here("data", DATA_NAME)
-ENGINE_FILE <- here("R","fit.R")
+ENGINE_FILE <- here("R", "fit.R")
 
-# Create results folder and save config
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
 
 cat(sprintf("\nSaving configuration to %s...\n", CONFIG_PATH))
 save(list = c("OUTPUT_FOLDER", "DATA_NAME", "SUBJECT_COL", "MODEL_NAME", 
-              "CONDITIONS", "VARYING_PARAMS", "FIXED_PARAMS", "ITER_MAX", "USE_CORES"), 
+              "CONDITIONS", "VARYING_PARAMS", "FIXED_PARAMS", "SIM_CONSTANTS", 
+              "ITER_MAX", "USE_CORES"), 
      file = CONFIG_PATH)
 
-# Load data to count subjects
 if (!file.exists(DATA_FILE)) stop("File not found! Did you put your data in the 'data' folder?")
 
 if (grepl("\\.rds$", DATA_FILE, ignore.case = TRUE)) {
@@ -92,13 +104,12 @@ if (RUN_MODE == "single") {
   system2("Rscript", args = c("--vanilla", shQuote(ENGINE_FILE), "GROUP", shQuote(CONFIG_PATH)))
   
 } else if (RUN_MODE == "hpc") {
-  # For the HPC printout, use a relative path so it works when copy-pasted onto Linux!
   CONFIG_REL <- file.path("results", OUTPUT_FOLDER, "config.RData")
-  
   cat("\n=== HPC PREPARATION COMPLETE ===\n")
   cat(sprintf("1. Your settings are safely saved in:\n   %s\n", CONFIG_PATH))
-  cat("2. To run this on the HPC cluster, simply copy and paste this command into your terminal:\n\n")
-  cat(sprintf("sbatch --job-name=vratio --array=1-%d --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=%s hpc/batch_fit.slurm\n\n", n_subjects, CONFIG_REL))
+  cat("2. To run this on the HPC cluster, copy and paste this command into your terminal:\n\n")
+  cat(sprintf("sbatch --job-name=%s --array=1-%d --export=NONE,R_SCRIPT=R/fit.R,CONFIG_PATH=%s hpc/batch_fit.slurm\n\n", 
+              MODEL_NAME, n_subjects, CONFIG_REL))
   
 } else {
   stop("Invalid RUN_MODE! Choose 'single', 'local_batch', 'group', or 'hpc'.")
