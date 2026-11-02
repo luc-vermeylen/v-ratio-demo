@@ -1,0 +1,3 @@
+"subject_id","model","cost","bic","aic","n_obs","n_bins","n_free_params","folder"
+"1","DDM",39.2714618993471,56.3828093233157,45.2714618993471,300,12,3,"/Users/luc/Postdoc/v-ratio-demo/results/test_ddm_smoke"
+"2","DDM",65.7504001456202,82.8617475695888,71.7504001456202,300,14,3,"/Users/luc/Postdoc/v-ratio-demo/results/test_ddm_smoke"

@@ -1,6 +1,6 @@
 # ==============================================================================
 # 5_recovery_simulate.R
-# PARAMETER RECOVERY: Synthetic Data Simulation
+# PARAMETER RECOVERY: Synthetic Data Simulation (Model-Agnostic)
 # Author: Luc Vermeylen
 # Description:
 # Generates synthetic subject data with known ground-truth parameters.
@@ -17,7 +17,7 @@
 # --- A. GENERAL & FILE OUTPUT ---
 OUTPUT_FOLDER <- "recovery_fcb6_demo"          # Folder in /results where ground_truth.csv is saved
 DATA_NAME     <- "synthetic_recovery_demo.csv" # CSV file created in /data (matches 1_run_pipeline.R)
-MODEL_NAME    <- "FCB_cj6"                    # "FCB_cj2" (binary) or "FCB_cj6" (6-point scale)
+MODEL_NAME    <- "FCB_cj6"                    # "FCB_cj2", "FCB_cj6", "DMC", or "DDM"
 N_SUBJECTS    <- 2                            # Number of synthetic subjects (2 for smoke test; 20-50 for paper)
 RANDOM_SEED   <- 42                           # Set seed for reproducible synthetic subjects
 
@@ -79,7 +79,8 @@ DATA_FILE  <- here("data", DATA_NAME)
 
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
 
-# Start with default master boundaries
+# Inspect model capabilities and default constants
+model_info    <- get_model_info(MODEL_NAME)
 master_bounds <- get_bounds(MODEL_NAME)
 active_lower  <- master_bounds$lower
 active_upper  <- master_bounds$upper
@@ -125,7 +126,6 @@ if (PARAM_SOURCE == "deoptim") {
   
   # B. Calculate Robust Envelope (Quantile Trimming)
   for (p in names(active_lower)) {
-    # Match parameter column (e.g., 'a', 'ter', 'v', 'v.Easy', 'v:Easy')
     matched_cols <- grep(paste0("^", p, "($|[:._])"), names(emp_df), value = TRUE)
     
     if (length(matched_cols) > 0) {
@@ -207,7 +207,8 @@ if (!is.null(TEMPLATE_DATA)) {
 all_sim_trials <- list()
 ground_truth_records <- list()
 
-cat(sprintf("\nSimulating %d synthetic subjects for model '%s'...\n", N_SUBJECTS, MODEL_NAME))
+cat(sprintf("\nSimulating %d synthetic subjects for model '%s' (Time: %s, s=%.1f, dt=%.3f)...\n", 
+            N_SUBJECTS, MODEL_NAME, model_info$time_unit, model_info$default_s, model_info$default_dt))
 
 base_param_names <- names(master_bounds$lower)
 
@@ -219,14 +220,12 @@ for (s_idx in 1:N_SUBJECTS) {
   
   # Inject active boundaries into config
   for (pn in names(config$lower)) {
-    # Match root parameter name
     root_p <- sub("(:|\\.).*$", "", pn)
     if (root_p %in% names(active_lower)) {
       if (grepl("(:Int$|^[a-zA-Z0-9_]+$)", pn)) {
         config$lower[pn] <- active_lower[root_p]
         config$upper[pn] <- active_upper[root_p]
       } else {
-        # Slope range based on active bounds
         p_rng <- active_upper[root_p] - active_lower[root_p]
         config$lower[pn] <- -p_rng
         config$upper[pn] <- p_rng
@@ -274,7 +273,7 @@ for (s_idx in 1:N_SUBJECTS) {
   gt_row$subject_id <- s_idx
   ground_truth_records[[s_idx]] <- gt_row
   
-  # D. Simulate Behavioral Trials
+  # D. Simulate Behavioral Trials (Adaptive s and dt)
   sub_trials <- list()
   
   if (length(CONDITIONS) > 0) {
@@ -294,8 +293,8 @@ for (s_idx in 1:N_SUBJECTS) {
       
       sim_args <- p_cell
       sim_args$ntrials <- n_cell_trials
-      sim_args$s       <- 1
-      sim_args$dt      <- 0.001
+      sim_args$s       <- model_info$default_s
+      sim_args$dt      <- model_info$default_dt
       sim_args$seed    <- sample.int(2e9, 1)
       
       cell_sim <- do.call(MODEL_NAME, sim_args)
@@ -308,8 +307,8 @@ for (s_idx in 1:N_SUBJECTS) {
   } else {
     sim_args <- as.list(c(raw_params, unlist(config$fixed)))
     sim_args$ntrials <- nrow(subject_design)
-    sim_args$s       <- 1
-    sim_args$dt      <- 0.001
+    sim_args$s       <- model_info$default_s
+    sim_args$dt      <- model_info$default_dt
     sim_args$seed    <- sample.int(2e9, 1)
     sub_df <- do.call(MODEL_NAME, sim_args)
   }
@@ -318,8 +317,12 @@ for (s_idx in 1:N_SUBJECTS) {
   all_sim_trials[[s_idx]] <- sub_df
 }
 
-final_dataset   <- bind_rows(all_sim_trials) %>% select(sub_id, rt, acc, rtconf, cj, everything())
-ground_truth_df <- bind_rows(ground_truth_records) %>% select(subject_id, everything())
+# Safe column selection across all model types
+final_dataset <- bind_rows(all_sim_trials) %>% 
+  select(sub_id, rt, acc, any_of(c("congruency", "rtconf", "cj")), everything())
+
+ground_truth_df <- bind_rows(ground_truth_records) %>% 
+  select(subject_id, everything())
 
 # ==============================================================================
 # 6. VERIFICATION & EXPORT
