@@ -63,6 +63,21 @@ model_params <- list(
     sv  = c(0, 2),     # Drift rate variability SD
     st  = c(0, 0.5),   # Non-decision time variability range
     sz  = c(0, 0.5)    # Starting point variability range
+  ),
+  # --- 4. RULE-ONSET CONFLICT MODEL (Scale: Seconds, s = 1.0, dt = 0.001) ---
+  "RuleOnset" = list(
+    v              = c(0.2, 4.0),   # Mean sensory drift rate
+    sv             = c(0.0, 3.0),   # Drift rate trial-by-trial SD
+    thr            = c(0.2, 2.0),   # Response threshold theta
+    ter            = c(0.1, 1.0),   # Non-decision time (seconds)
+    st             = c(0.0, 0.4),   # Ter jitter range
+    alpha          = c(0.08, 0.35), # Spatial gain (constrained to protect CAF)
+    mR             = c(0.05, 0.70), # Mean rule onset (seconds)
+    sR             = c(0.01, 0.50), # SD of rule onset (seconds)
+    tau            = c(0.5, 5.0),   # Time constant of location decay
+    gamma          = c(0.1, 1.0),   # Mutual holding-back factor
+    gate           = c(1.0, 1.0),   # Fixed gate
+    prop_congruent = c(0.5, 0.5)    # Fixed trial balance
   )
 )
 
@@ -96,6 +111,13 @@ get_model_info <- function(model_name) {
       has_confidence = FALSE,
       time_unit      = "seconds",
       default_s      = 1,
+      default_dt     = 0.001
+    ),
+    "RuleOnset" = list(
+      has_conflict   = TRUE,
+      has_confidence = FALSE,
+      time_unit      = "seconds",
+      default_s      = 1.0,
       default_dt     = 0.001
     )
   )
