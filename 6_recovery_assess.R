@@ -196,14 +196,18 @@ p_grid <- wrap_plots(scatter_plots, ncol = n_cols) +
                                 plot.subtitle = element_text(size = 11, color = "gray30")))
 
 # ==============================================================================
-# 5. PARAMETER CONFUSION MATRIX (LEAKAGE ANALYSIS)
+# 5. PARAMETER CONFUSION MATRIX (LEAKAGE ANALYSIS - SORTED & ALIGNED)
 # ==============================================================================
-# Checks whether true values of parameter X leak into estimated parameter Y
 conf_matrix_plot <- NULL
 
 if (length(subs_in_both) >= 5 && length(active_params) > 1) {
-  mat_true <- as.matrix(df_gt[subject_id %in% subs_in_both, active_params, with = FALSE])
-  mat_est  <- as.matrix(df_fit[subject_id %in% subs_in_both, unlist(param_pairs[active_params]), with = FALSE])
+  
+  # CRITICAL FIX: Explicitly sort both dataframes by identical subject order!
+  df_gt_aligned  <- df_gt[match(subs_in_both, df_gt$subject_id), ]
+  df_fit_aligned <- df_fit[match(subs_in_both, df_fit$subject_id), ]
+  
+  mat_true <- as.matrix(df_gt_aligned[, active_params, with = FALSE])
+  mat_est  <- as.matrix(df_fit_aligned[, unlist(param_pairs[active_params]), with = FALSE])
   
   cross_cor <- cor(mat_true, mat_est, use = "pairwise.complete.obs")
   rownames(cross_cor) <- paste0("True_", active_params)
@@ -212,15 +216,21 @@ if (length(subs_in_both) >= 5 && length(active_params) > 1) {
   cor_long <- as.data.frame(as.table(cross_cor)) %>%
     rename(True_Param = Var1, Est_Param = Var2, Correlation = Freq)
   
+  # CRITICAL FIX: Reverse Y-factor so diagonal runs top-left to bottom-right
+  cor_long$True_Param <- factor(cor_long$True_Param, levels = rev(paste0("True_", active_params)))
+  cor_long$Est_Param  <- factor(cor_long$Est_Param,  levels = paste0("Est_", active_params))
+  
   conf_matrix_plot <- ggplot(cor_long, aes(x = Est_Param, y = True_Param, fill = Correlation)) +
-    geom_tile(color = "white") +
-    geom_text(aes(label = sprintf("%.2f", Correlation)), size = 3) +
-    scale_fill_gradient2(low = "firebrick3", mid = "white", high = "dodgerblue3", midpoint = 0, limits = c(-1, 1)) +
-    theme_minimal(base_size = 10) +
+    geom_tile(color = "white", linewidth = 0.5) +
+    geom_text(aes(label = sprintf("%.2f", Correlation)), size = 3.5, fontface = "bold") +
+    scale_fill_gradient2(low = "firebrick3", mid = "white", high = "dodgerblue3", 
+                         midpoint = 0, limits = c(-1, 1), name = "Correlation") +
+    theme_minimal(base_size = 11) +
     labs(title = "Parameter Recovery Confusion Matrix",
-         subtitle = "Diagonal = desired recovery | Off-diagonal = cross-parameter leakage",
+         subtitle = "Diagonal (Top-Left -> Bottom-Right) = desired recovery | Off-diagonal = leakage",
          x = "Estimated Parameters", y = "True Parameters") +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+          axis.text.y = element_text(face = "bold"),
           panel.grid = element_blank())
 }
 
@@ -247,6 +257,7 @@ dev.off()
 cat(sprintf("Diagnostic plots saved to: %s\n", pdf_path))
 
 # Print to screen
+print(conf_matrix_plot)
 print(p_grid)
 
 cat("\n[SUCCESS] Parameter recovery assessment complete.\n")

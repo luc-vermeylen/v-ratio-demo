@@ -13,7 +13,7 @@
 # ==============================================================================
 # 0. DIRECTORY SETUP
 # ==============================================================================
-OUTPUT_FOLDER <- "" # Match your OUTPUT_FOLDER from 1_run_pipeline.R
+OUTPUT_FOLDER <- "recovery_ruleonset_ideal" # Match your OUTPUT_FOLDER from 1_run_pipeline.R
 
 library(here)
 library(dplyr)

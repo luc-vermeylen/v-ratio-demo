@@ -319,6 +319,8 @@ for (s_idx in 1:N_SUBJECTS) {
 
 # Safe column selection across all model types
 final_dataset <- bind_rows(all_sim_trials) %>% 
+  filter(is.finite(acc) & acc %in% c(0, 1)) %>%
+  filter(is.finite(rt) & rt > 0) %>%
   select(sub_id, rt, acc, any_of(c("congruency", "rtconf", "cj")), everything())
 
 ground_truth_df <- bind_rows(ground_truth_records) %>% 

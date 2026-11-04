@@ -66,16 +66,16 @@ model_params <- list(
   ),
   # --- 4. RULE-ONSET CONFLICT MODEL (Scale: Seconds, s = 1.0, dt = 0.001) ---
   "RuleOnset" = list(
-    v              = c(0.2, 4.0),   # Mean sensory drift rate
+    v              = c(0.1, 4.0),   # Mean sensory drift rate
     sv             = c(0.0, 3.0),   # Drift rate trial-by-trial SD
     thr            = c(0.2, 2.0),   # Response threshold theta
     ter            = c(0.1, 1.0),   # Non-decision time (seconds)
     st             = c(0.0, 0.4),   # Ter jitter range
-    alpha          = c(0.08, 0.35), # Spatial gain (constrained to protect CAF)
+    alpha          = c(0.05, 0.60), # Spatial gain (buffered to 0.60)
     mR             = c(0.05, 0.70), # Mean rule onset (seconds)
     sR             = c(0.01, 0.50), # SD of rule onset (seconds)
     tau            = c(0.5, 5.0),   # Time constant of location decay
-    gamma          = c(0.1, 1.0),   # Mutual holding-back factor
+    gamma          = c(0.0, 1.0),   # Mutual holding-back (capped at 1.0 to prevent deadlock)
     gate           = c(1.0, 1.0),   # Fixed gate
     prop_congruent = c(0.5, 0.5)    # Fixed trial balance
   )
@@ -867,6 +867,7 @@ objective_function <- function(params, observations, param_names, constants,
   } else {
     # simple simulation without conditions
     sim_args <- c(as.list(params), constants)
+    sim_args <- sim_args[!duplicated(names(sim_args))] 
     sim_args$seed <- sample.int(2e9, 1)
     preds <- do.call(model_fun, sim_args)
   }
@@ -1024,25 +1025,31 @@ plot_fit <- function(obs, pred,
 # nbins Integer. Number of bins.
 get_binned_means <- function(df, x_col, y_col, nbins) {
   
-  # Safety checks
-  if (nrow(df) < nbins * 2) return(NULL)
+  if (is.null(df) || nrow(df) == 0) return(NULL)
   
-  x_vals <- df[[x_col]]
-  y_vals <- df[[y_col]]
+  # Strictly keep rows with complete, finite data
+  valid_rows <- which(is.finite(df[[x_col]]) & !is.na(df[[y_col]]))
+  if (length(valid_rows) < nbins * 2) return(NULL)
   
-  # Ensure Y is numeric (handle factors like Accuracy/CJ)
+  df_sub <- df[valid_rows, ]
+  x_vals <- df_sub[[x_col]]
+  y_vals <- df_sub[[y_col]]
+  
   if (is.factor(y_vals)) y_vals <- as.numeric(as.character(y_vals))
   
-  # Calculate quantiles on X
+  # If y is accuracy, keep strictly 0 and 1 (discard -1 timeouts)
+  if (y_col %in% c("acc", "cor", "accuracy")) {
+    acc_idx <- which(y_vals %in% c(0, 1))
+    if (length(acc_idx) < nbins * 2) return(NULL)
+    x_vals <- x_vals[acc_idx]
+    y_vals <- y_vals[acc_idx]
+  }
+  
   probs  <- seq(0, 1, length.out = nbins + 1)
   breaks <- unique(quantile(x_vals, probs = probs, names = FALSE, na.rm = TRUE))
-  
   if (length(breaks) < nbins + 1) return(NULL)
   
-  # Binning
   bin_idx <- .bincode(x_vals, breaks, include.lowest = TRUE)
-  
-  # Aggregate
   mean_x <- tapply(x_vals, bin_idx, mean, na.rm = TRUE)
   mean_y <- tapply(y_vals, bin_idx, mean, na.rm = TRUE)
   
@@ -1358,100 +1365,66 @@ plot_dist <- function(obs, pred = NULL,
   par(mfrow=c(1,1))
 }
 
-# Calculate Delta Plot Coordinates
-# 
-# Splits Correct trials into nbins, calculates Mean RT
-# for each bin per condition, and computes the delta (Incong - Cong).
-#
-# df Dataframe with columns: rt, acc, congruency
-# nbins Integer. Number of bins (e.g. 5 for quintiles).
-# Returns: Dataframe with columns x (Mean RT) and y (Delta). Or NULL if invalid.
+# ==============================================================================
+# Calculate Delta Plot Coordinates (Defensive & NA-Immune)
+# ==============================================================================
 get_delta_coords <- function(df, nbins) {
   
-  # 1. Filter Correct Trials
-  # Assumes acc=1 is correct; congruency 1=Cong, -1=Incong
-  rt_c <- df$rt[df$acc == 1 & df$congruency == 1]
-  rt_i <- df$rt[df$acc == 1 & df$congruency == -1]
+  if (is.null(df) || nrow(df) == 0) return(NULL)
   
-  # Safety Check: Need enough trials (2 per bin minimum)
+  acc_vec  <- as.numeric(as.character(df$acc))
+  cong_vec <- as.numeric(as.character(df$congruency))
+  rt_vec   <- as.numeric(as.character(df$rt))
+  
+  # Strictly select completed correct trials (drops NAs and timeouts completely)
+  idx_c <- which(acc_vec == 1 & cong_vec == 1 & is.finite(rt_vec) & rt_vec > 0)
+  idx_i <- which(acc_vec == 1 & cong_vec == -1 & is.finite(rt_vec) & rt_vec > 0)
+  
+  rt_c <- rt_vec[idx_c]
+  rt_i <- rt_vec[idx_i]
+  
   if (length(rt_c) < nbins * 2 || length(rt_i) < nbins * 2) return(NULL)
   
-  # 2. Internal Helper: Bin and Average
   calc_bin_means <- function(x) {
-    # Calculate quantile breaks (0%, 20%, 40%...)
-    breaks <- quantile(x, probs = seq(0, 1, length.out = nbins + 1), names = FALSE)
-    # Handle discrete data (tied quantiles)
+    x <- x[is.finite(x)]
+    if (length(x) < nbins * 2) return(NULL)
+    
+    breaks <- quantile(x, probs = seq(0, 1, length.out = nbins + 1), names = FALSE, na.rm = TRUE)
     if (length(unique(breaks)) < length(breaks)) return(NULL)
     
-    # Assign bins
     indices <- .bincode(x, breaks, include.lowest = TRUE)
-    # Calculate means
-    tapply(x, indices, mean)
+    tapply(x, indices, mean, na.rm = TRUE)
   }
   
-  # 3. Compute Means
   means_c <- calc_bin_means(rt_c)
   means_i <- calc_bin_means(rt_i)
   
   if (is.null(means_c) || is.null(means_i)) return(NULL)
   
-  # 4. Compute Coordinates
-  # X = Average RT of the two conditions
-  # Y = Conflict Effect (Incongruent - Congruent)
   data.frame(
     x = (means_c + means_i) / 2,
     y = means_i - means_c
   )
 }
 
-# Plot Delta Function
-# 
-# Plots the conflict effect (Incong - Cong) as a function of time.
-# Solid = Observed, Dashed = Predicted.
-# 
-# obs Dataframe. Observed data.
-# pred Dataframe. Predicted data (optional).
-# nbins Integer. Number of bins.
-# main_title String.
 plot_delta <- function(obs, 
                        pred = NULL, 
                        nbins = 5, 
                        main_title = "Delta Plot") {
   
-  # 1. STANDARDIZATION
-  # Helper to clean column names and types safely
-  clean_df <- function(df) {
-    if (is.null(df)) return(NULL)
-    
-    # Force Factors to Numeric (-1/1 and 0/1)
-    # We use as.character first to avoid factor index issues (e.g. factor level 1 becoming '1')
-    if (is.factor(df$acc))        df$acc        <- as.numeric(as.character(df$acc))
-    if (is.factor(df$congruency)) df$congruency <- as.numeric(as.character(df$congruency))
-    
-    return(df)
-  }
-  
-  obs  <- clean_df(obs)
-  pred <- clean_df(pred)
-  
-  # 2. CALCULATE COORDINATES
   coords_o <- get_delta_coords(obs, nbins)
-  coords_p <- if(!is.null(pred)) get_delta_coords(pred, nbins) else NULL
+  coords_p <- if (!is.null(pred)) get_delta_coords(pred, nbins) else NULL
   
   if (is.null(coords_o)) {
-    plot(1, type="n", axes=F, xlab="", ylab="", main="Insufficient Data")
+    plot(1, type = "n", axes = FALSE, xlab = "", ylab = "", main = "Insufficient Data")
     return()
   }
   
-  # 3. SETUP CANVAS
-  # Combine data to find full range
   all_x <- c(coords_o$x, coords_p$x)
-  all_y <- c(coords_o$y, coords_p$y, 0) # Ensure 0 is included
+  all_y <- c(coords_o$y, coords_p$y, 0)
   
-  # Add 5% padding
   x_lim <- range(all_x, na.rm = TRUE)
   y_lim <- range(all_y, na.rm = TRUE) + c(-0.02, 0.02)
-  
   time_unit_label <- if (max(all_x, na.rm = TRUE) > 20) "ms" else "s"
   
   plot(1, type = "n", xlim = x_lim, ylim = y_lim,
@@ -1461,31 +1434,15 @@ plot_delta <- function(obs,
   
   grid(nx = NULL, ny = NULL, col = "gray90", lty = "dotted")
   abline(h = 0, lty = 2, col = "gray50")
-  
-  # 4. DRAW LINES
-  # Observed (Solid, Filled)
   lines(coords_o$x, coords_o$y, type = "b", pch = 19, lwd = 2, col = "black")
   
-  # Predicted (Dashed, Open)
   if (!is.null(coords_p)) {
     lines(coords_p$x, coords_p$y, type = "b", pch = 1, lty = 2, lwd = 2, col = "red")
   }
   
-  # 5. LEGEND
-  leg_txt <- "Observed"
-  leg_col <- "black"
-  leg_pch <- 19
-  leg_lty <- 1
-  
-  if (!is.null(coords_p)) {
-    leg_txt <- c(leg_txt, "Predicted")
-    leg_col <- c(leg_col, "red")
-    leg_pch <- c(leg_pch, 1)
-    leg_lty <- c(leg_lty, 2)
-  }
-  
-  legend("topleft", legend = leg_txt, col = leg_col, 
-         pch = leg_pch, lty = leg_lty, lwd = 2, bty = "n", cex = 0.8)
+  leg_txt <- if (!is.null(coords_p)) c("Observed", "Predicted") else "Observed"
+  leg_col <- if (!is.null(coords_p)) c("black", "red") else "black"
+  legend("topleft", legend = leg_txt, col = leg_col, pch = c(19, 1), lty = c(1, 2), lwd = 2, bty = "n", cex = 0.8)
 }
 
 
@@ -1782,12 +1739,12 @@ plot_bin_mass_mirror <- function(final_proportions) {
 # separated for Correct and Error trials.
 plot_cj_distribution <- function(obs, pred, main_title = "Confidence Rating Distribution") {
   
-  # Helper to calculate proportions
   calc_props <- function(df, source_name) {
     if (is.null(df) || nrow(df) == 0) return(NULL)
     
     df %>%
       filter(!is.na(cj), !is.na(acc)) %>%
+      filter(as.character(acc) %in% c("0", "1")) %>% # Strictly exclude -1 timeouts
       group_by(acc, cj) %>%
       summarise(count = n(), .groups = "drop_last") %>%
       mutate(prop = count / sum(count),
@@ -1802,7 +1759,7 @@ plot_cj_distribution <- function(obs, pred, main_title = "Confidence Rating Dist
   
   if (nrow(plot_df) == 0) return(NULL)
   
-  p <- ggplot(plot_df, aes(x = as.factor(cj), y = prop, fill = source)) +
+  ggplot(plot_df, aes(x = as.factor(cj), y = prop, fill = source)) +
     geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "black", width = 0.7) +
     facet_wrap(~Accuracy) +
     scale_fill_manual(values = c("Observed" = "gray50", "Predicted" = "firebrick3")) +
@@ -1813,6 +1770,4 @@ plot_cj_distribution <- function(obs, pred, main_title = "Confidence Rating Dist
           strip.text = element_text(face = "bold"),
           legend.position = "bottom",
           panel.grid.major.x = element_blank())
-  
-  return(p)
 }

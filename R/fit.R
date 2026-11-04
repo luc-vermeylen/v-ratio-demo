@@ -127,7 +127,20 @@ if (!is.null(SUBJECT_IDX)) {
   SUBJECT_ID_VAL <- "GROUP"
   print("Fitting Group/All Data.")
 }
-if (nrow(observations) == 0) stop("No data found for the selected subject...")
+
+# --- Strict Guardrail: Filter empirical observations to completed valid trials ---
+observations <- observations[!is.na(observations$acc) & observations$acc %in% c(0, 1), ]
+observations <- observations[!is.na(observations$rt) & is.finite(observations$rt) & observations$rt > 0, ]
+
+if (model_info$has_conflict) {
+  observations <- observations[!is.na(observations$congruency) & observations$congruency %in% c(-1, 1), ]
+}
+if (model_info$has_confidence) {
+  observations <- observations[!is.na(observations$rtconf) & is.finite(observations$rtconf) & observations$rtconf > 0, ]
+  observations <- observations[!is.na(observations$cj), ]
+}
+
+if (nrow(observations) == 0) stop("No valid trials found for the selected subject...")
 
 # ==============================================================================
 # 5. CONFIGURE PARAMETER SPACE
@@ -139,7 +152,7 @@ fit_constants <- c(config$fixed, sim_constants)
 # ==============================================================================
 # 6. STANDARDIZATION OF THE FACTORS
 # ==============================================================================
-observations$acc <- factor(observations$acc, levels = c(0, 1))
+observations$acc <- factor(as.numeric(as.character(observations$acc)), levels = c(0, 1))
 
 # Conflict Standardization: Congruency levels (-1, 1)
 if (model_info$has_conflict) {

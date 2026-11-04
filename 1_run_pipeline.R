@@ -83,7 +83,18 @@ if (grepl("\\.rds$", DATA_FILE, ignore.case = TRUE)) {
   if (!requireNamespace("data.table", quietly = TRUE)) install.packages("data.table")
   raw_data <- as.data.frame(data.table::fread(DATA_FILE))
 }
-n_subjects <- length(unique(raw_data[[SUBJECT_COL]]))
+
+# Safety check for subject column
+if (!SUBJECT_COL %in% names(raw_data)) {
+  stop(sprintf("\n[DATA ERROR] Subject column '%s' not found in dataset '%s'.\nColumns present: %s",
+               SUBJECT_COL, DATA_NAME, paste(names(raw_data), collapse = ", ")))
+}
+
+# Count valid, non-NA subject IDs
+valid_subs <- unique(na.omit(raw_data[[SUBJECT_COL]]))
+n_subjects <- length(valid_subs)
+
+if (n_subjects == 0) stop("No valid subjects found in the dataset.")
 
 # Execute based on mode
 if (RUN_MODE == "single") {
