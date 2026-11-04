@@ -46,6 +46,7 @@ model_params <- list(
   # --- 2. CONFLICT MODELS (Scale: Milliseconds, s = 4, dt = 1) ---
   "DMC" = list(
     v_c      = c(0, 1.5),   # Controlled drift rate
+    sv       = c(0.0, 2.0),   # Trial-to-trial drift rate variability SD
     a        = c(10, 150),  # Boundary separation (total = 2a)
     ter_mean = c(100, 800), # Mean non-decision time (ms)
     amp      = c(0, 130),   # Amplitude of gamma pulse
