@@ -437,3 +437,88 @@ DataFrame RuleOnset(
     Named("wrong_hand_at_resp") = HWRESP
   );
 }
+
+// ============================================================================
+// MODEL: RuleOnset_Independent (Decoupled Spatial Drift Rate)
+// ============================================================================
+// [[Rcpp::export]]
+DataFrame RuleOnset_Independent(
+    int ntrials,
+    double v, 
+    double sv, 
+    double thr, 
+    double ter, 
+    double st,
+    double v_loc,               // Independent spatial drift rate (replaces alpha)
+    double mR, 
+    double sR, 
+    double tau, 
+    double gamma,
+    double gate = 1.0, 
+    double prop_congruent = 0.5,
+    double s = 1.0, double dt = 0.001, double tmax = 5.0, unsigned long seed = 0) {
+  
+  RNGScope scope;
+  if (seed != 0) zigg_rule.setSeed(seed);
+  
+  double sdlog   = std::sqrt(std::log(1.0 + (sR * sR) / (mR * mR)));
+  double meanlog = std::log(mR) - 0.5 * sdlog * sdlog;
+  double decay   = std::exp(-dt / tau);
+  double noise   = s * std::sqrt(dt);
+  int n_congruent = (int) std::round(ntrials * prop_congruent);
+  
+  NumericVector RT(ntrials), ACC(ntrials), CONG(ntrials), RULE(ntrials), HWRESP(ntrials);
+  
+  for (int i = 0; i < ntrials; i++) {
+    
+    double r = (i < n_congruent) ? 1.0 : -1.0;                  
+    double trial_v = v;
+    if (sv > 0) trial_v = v + sv * zigg_rule.norm();             
+    double rule_t = std::exp(meanlog + sdlog * zigg_rule.norm()); 
+    double trial_ter = ter;
+    if (st > 0) {
+      trial_ter += st * (R::runif(0.0, 1.0) - 0.5);              
+      if (trial_ter < 0) trial_ter = 0;
+    }
+    
+    double y_loc = 0.0, y_rule = 0.0, t = 0.0, hw_resp = NA_REAL;
+    int acc = -1;
+    
+    while (t < tmax) {
+      t += dt;
+      bool before_rule = (t <= rule_t);
+      
+      if (before_rule) {
+        // Independent spatial accumulation: location has its own drift rate v_loc
+        y_loc += (r * v_loc) * dt + noise * zigg_rule.norm();
+      } else {
+        // Color rule engaged: sensory color evidence accumulates
+        double dE = trial_v * dt + noise * zigg_rule.norm();
+        y_rule += dE;
+        y_loc  *= decay;
+      }
+      
+      double H_c = std::max(y_rule, 0.0) + std::max(y_loc, 0.0);   
+      double H_w = std::max(-y_rule, 0.0) + std::max(-y_loc, 0.0); 
+      
+      if (!before_rule || gate < 0.5) {                          
+        if (H_c - gamma * H_w >= thr) { acc = 1; hw_resp = H_w; break; }
+        if (H_w - gamma * H_c >= thr) { acc = 0; hw_resp = H_w; break; }
+      }
+    }
+    
+    RT[i]     = t + trial_ter;
+    ACC[i]    = acc;
+    CONG[i]   = r;
+    RULE[i]   = rule_t;
+    HWRESP[i] = hw_resp / thr;
+  }
+  
+  return DataFrame::create(
+    Named("rt")                 = RT,
+    Named("acc")                = ACC,
+    Named("congruency")         = CONG,
+    Named("rule_onset")         = RULE,
+    Named("wrong_hand_at_resp") = HWRESP
+  );
+}

@@ -78,6 +78,20 @@ model_params <- list(
     gamma          = c(0.0, 1.0),   # Mutual holding-back (capped at 1.0 to prevent deadlock)
     gate           = c(1.0, 1.0),   # Fixed gate
     prop_congruent = c(0.5, 0.5)    # Fixed trial balance
+  ),
+  "RuleOnset_Independent" = list(
+    v              = c(0.1, 4.0),   # Sensory drift rate
+    sv             = c(0.0, 3.0),   # Sensory drift SD
+    thr            = c(0.2, 2.0),   # Threshold theta
+    ter            = c(0.1, 1.0),   # Non-decision time
+    st             = c(0.0, 0.4),   # Ter jitter
+    v_loc          = c(0.02, 1.5),  # Independent spatial location drift rate
+    mR             = c(0.05, 0.70), # Mean rule onset
+    sR             = c(0.01, 0.50), # SD of rule onset
+    tau            = c(0.5, 5.0),   # Decay time constant
+    gamma          = c(0.0, 1.0),   # Mutual holding-back factor
+    gate           = c(1.0, 1.0),   # Fixed gate
+    prop_congruent = c(0.5, 0.5)
   )
 )
 
@@ -114,6 +128,13 @@ get_model_info <- function(model_name) {
       default_dt     = 0.001
     ),
     "RuleOnset" = list(
+      has_conflict   = TRUE,
+      has_confidence = FALSE,
+      time_unit      = "seconds",
+      default_s      = 1.0,
+      default_dt     = 0.001
+    ),
+    "RuleOnset_Independent" = list(
       has_conflict   = TRUE,
       has_confidence = FALSE,
       time_unit      = "seconds",
