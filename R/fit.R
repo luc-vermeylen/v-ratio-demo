@@ -143,14 +143,7 @@ if (model_info$has_confidence) {
 if (nrow(observations) == 0) stop("No valid trials found for the selected subject...")
 
 # ==============================================================================
-# 5. CONFIGURE PARAMETER SPACE
-# ==============================================================================
-config <- get_param_config(MODEL_NAME, VARYING_PARAMS, observations)
-config <- fix_parameters(config, FIXED_PARAMS)
-fit_constants <- c(config$fixed, sim_constants)
-
-# ==============================================================================
-# 6. STANDARDIZATION OF THE FACTORS
+# 5. STANDARDIZATION OF THE FACTORS (Must run BEFORE parameter config!)
 # ==============================================================================
 observations$acc <- factor(as.numeric(as.character(observations$acc)), levels = c(0, 1))
 
@@ -189,6 +182,13 @@ if (!is.null(CONDITIONS)) {
 }
 
 print(paste("Observations ready:", nrow(observations), "trials."))
+
+# ==============================================================================
+# 6. CONFIGURE PARAMETER SPACE (Now reads factorized columns correctly!)
+# ==============================================================================
+config <- get_param_config(MODEL_NAME, VARYING_PARAMS, observations)
+config <- fix_parameters(config, FIXED_PARAMS)
+fit_constants <- c(config$fixed, sim_constants)
 
 # ==============================================================================
 # 7. RUN OPTIMIZATION

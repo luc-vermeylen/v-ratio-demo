@@ -188,7 +188,7 @@ DataFrame FCB_cj6(
 } 
 
 // ============================================================================
-// MODEL 3: Diffusion Model for Conflict Tasks (DMC)
+// MODEL 3: Diffusion Model for Conflict Tasks (DMC) with Drift Variability (sv)
 // ============================================================================
 // [[Rcpp::export]]
 DataFrame DMC(
@@ -199,6 +199,7 @@ DataFrame DMC(
     double tau = 130,           // Time-to-peak of gamma pulse (scale, ms)
     double beta = 3,            // Starting point variability shape (0 = no variability)
     double ter_sd = 20,         // Non-decision time variability (SD, ms)
+    double sv = 0.0,            // Trial-to-trial variability in controlled drift rate (SD)
     double alpha = 2,           // Shape of gamma pulse (fixed at 2)
     double s = 4,               // Within-trial noise (standard DMC scale: 4)
     double dt = 1,              // Time step size (1 ms)
@@ -218,7 +219,7 @@ DataFrame DMC(
   double ae = alpha - 1.0;
   double const_term = std::pow(std::exp(1.0) / (ae * tau), ae);
   
-  for (int i = 0; i < max_steps; ++i) {
+  for(int i = 0; i < max_steps; ++i) {
     double t_val = (i + 1) * dt; 
     double shape = std::exp(-t_val / tau) * 
       std::pow(t_val, ae) * const_term * 
@@ -249,7 +250,11 @@ DataFrame DMC(
     double ter = R::rnorm(ter_mean, ter_sd);
     if (ter < 0) ter = 0;
     
-    // C. Evidence Accumulation
+    // C. Drift Rate Variability on Controlled Drift (Normal Distribution)
+    double trial_v_c = v_c;
+    if (sv > 0) trial_v_c = v_c + sv * zigg.norm();
+    
+    // D. Evidence Accumulation
     double evidence = sp;
     double t = 0.0;
     int step_idx = 0;
@@ -266,7 +271,8 @@ DataFrame DMC(
       } 
       step_idx++;
       
-      double v_total = v_c + v_automatic;
+      // Total Drift = Trial-specific Controlled Drift + Automatic Pulse
+      double v_total = trial_v_c + v_automatic;
       evidence += v_total * dt + s_sqrt_dt * zigg.norm();
       
       if (evidence >= b_upper) {
@@ -289,7 +295,7 @@ DataFrame DMC(
     Named("acc") = DATA(_, 1),
     Named("congruency") = DATA(_, 2)
   );
-} 
+}
 
 // ============================================================================
 // MODEL 4: Standard Drift Diffusion Model (DDM)
