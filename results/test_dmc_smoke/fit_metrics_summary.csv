@@ -1,3 +1,0 @@
-"subject_id","model","cost","bic","aic","n_obs","n_bins","n_free_params","folder"
-"1","DMC",72.8606315024007,102.817954237941,82.8606315024007,400,17,5,"/Users/luc/Postdoc/v-ratio-demo/results/test_dmc_smoke"
-"2","DMC",67.121739573138,97.0790623086778,77.121739573138,400,18,5,"/Users/luc/Postdoc/v-ratio-demo/results/test_dmc_smoke"

@@ -430,7 +430,8 @@ reconstruct_cell_means <- function(betas, constants, varying_params, observation
         
         # Create a label specific to the variables used for THIS parameter
         if (length(p_vars) > 0) {
-          p_lvl_val <- paste(unlist(current_cell[, p_vars, drop = FALSE]), collapse = ".")
+          cell_strings <- paste(p_vars, unlist(current_cell[, p_vars, drop = FALSE]), sep = "_")
+          p_lvl_val <- paste(cell_strings, collapse = ".")
           reconstructed[paste0(p, ":", p_lvl_val)] <- p_lvl[[p]]
         } else {
           # Handle intercept-only varyings (~ 1)

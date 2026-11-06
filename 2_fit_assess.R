@@ -13,7 +13,14 @@
 # ==============================================================================
 # 0. DIRECTORY SETUP
 # ==============================================================================
-OUTPUT_FOLDER <- "" # Match your OUTPUT_FOLDER from 1_run_pipeline.R
+
+OUTPUT_FOLDER <- "fit_eeg46_ro_coupled_L2_fixSr7" # <--- Edit your folder name directly here!
+
+# Optional CLI override (only applies if run from terminal with arguments)
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) > 0 && nzchar(args[1])) {
+  OUTPUT_FOLDER <- args[1]
+}
 
 library(here)
 library(dplyr)

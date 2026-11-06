@@ -13,7 +13,13 @@
 # 0. DIRECTORY SETUP
 # ==============================================================================
 # --- 1. SETTINGS ---
-OUTPUT_FOLDER   <- "" 
+OUTPUT_FOLDER <- "fit_eeg46_ro_coupled_L0_full9" # <--- Edit your folder name directly here!
+
+# Optional CLI override (only applies if run from terminal with arguments)
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) > 0 && nzchar(args[1])) {
+  OUTPUT_FOLDER <- args[1]
+}
 
 # Toggle to TRUE to see the red DEoptim bounds, or FALSE to zoom in on the data
 SHOW_BOUNDARIES <- FALSE     

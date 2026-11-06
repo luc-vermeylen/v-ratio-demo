@@ -13,6 +13,17 @@
 
 FOLDERS_TO_COMPARE <- c("", "") # Example for specific folders: c("test_vratio_1", "test_vratio_2")
 
+FOLDERS_TO_COMPARE <- c(
+  "fit_eeg46_ddm_2v",
+  "fit_eeg46_dmc",
+  "fit_eeg46_ro_coupled_L0_full9",
+  "fit_eeg46_ro_coupled_L1_fixTau8",
+  "fit_eeg46_ro_coupled_L2_fixSr7",
+  "fit_eeg46_ro_coupled_L3_core6",
+  "fit_eeg46_ro_coupled_L4_nosv5",
+  "fit_eeg46_ro_indep_core6"
+)
+
 library(here)
 library(dplyr)
 library(tidyr)

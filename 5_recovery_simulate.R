@@ -269,7 +269,7 @@ for (s_idx in 1:N_SUBJECTS) {
   # C. Record Ground Truth (Deduplicated)
   cell_means <- reconstruct_cell_means(raw_params, config$fixed, VARYING_PARAMS, subject_design, MODEL_NAME)
   combined_p <- c(cell_means, unlist(config$fixed))
-  gt_row <- as.data.frame(as.list(combined_p[!duplicated(names(combined_p))]))
+  gt_row <- as.data.frame(as.list(combined_p[!duplicated(names(combined_p))]), check.names = FALSE)
   gt_row$subject_id <- s_idx
   ground_truth_records[[s_idx]] <- gt_row
   
